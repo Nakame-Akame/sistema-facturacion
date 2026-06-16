@@ -19,8 +19,11 @@
   },
   "homepage": "https://github.com/Nakame-Akame/sistema-facturacion#readme",
   "dependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "better-sqlite3": "^12.10.1",
     "cors": "^2.8.6",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "html-pdf-node": "^1.0.8",
+    "puppeteer-core": "^25.1.0"
   }
 }

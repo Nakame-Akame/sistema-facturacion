@@ -490,8 +490,9 @@
     <button class="modal-close" onclick="cerrarModal('modal-ver-factura')">✕</button>
     <div id="factura-preview-content"></div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
-      <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
+        <button class="btn btn-primary" onclick="descargarPDF()">📄 Descargar PDF</button>
+        <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>
     </div>
   </div>
 </div>
@@ -963,6 +964,17 @@ async function cargarReportes() {
   } catch(e) { toast('Error cargando reportes', 'error'); }
 }
 
+let facturaIdActual = null;
+
+async function verFactura(id) {
+  facturaIdActual = id; // guardar el id para el PDF
+  // ... resto del código existente sin cambios
+}
+
+function descargarPDF() {
+  if (!facturaIdActual) return;
+  window.open(`http://localhost:3000/api/pdf/${facturaIdActual}`, '_blank');
+}
 // Cargar dashboard al inicio
 cargarDashboard();
 </script>

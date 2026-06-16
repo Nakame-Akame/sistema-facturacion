@@ -11,15 +11,13 @@ const clientesRouter = require('./routes/clientes');
 const productosRouter = require('./routes/productos');
 const facturasRouter = require('./routes/facturas');
 const reportesRouter = require('./routes/reportes');
+const pdfRouter     = require('./routes/pdf');
 
-app.use('/api/clientes', clientesRouter);
+app.use('/api/clientes',  clientesRouter);
 app.use('/api/productos', productosRouter);
-app.use('/api/facturas', facturasRouter);
-app.use('/api/reportes', reportesRouter);
-
-app.get('/api/ping', (req, res) => {
-  res.json({ mensaje: 'Servidor funcionando ✓' });
-});
+app.use('/api/facturas',  facturasRouter);
+app.use('/api/reportes',  reportesRouter);
+app.use('/api/pdf',       pdfRouter);
 
 const PORT = 3000;
 app.listen(PORT, () => {
