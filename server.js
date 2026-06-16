@@ -1,25 +1,36 @@
 const express = require('express');
-const cors = require('cors');
-const db = require('./database');
+const cors    = require('cors');
+const session = require('express-session');
+const db      = require('./database');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
 app.use(express.json());
+app.use(session({
+  secret: 'facturapro-secreto-2024',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 8 * 60 * 60 * 1000 } // 8 horas
+}));
+
+// Middleware de autenticación
+function requiereLogin(req, res, next) {
+  if (!req.session.usuario)
+    return res.status(401).json({ ok: false, error: 'Debes iniciar sesión' });
+  next();
+}
+
+// Rutas públicas
+app.use('/api/auth', require('./routes/auth'));
+
+// Rutas protegidas
+app.use('/api/clientes',     requiereLogin, require('./routes/clientes'));
+app.use('/api/productos',    requiereLogin, require('./routes/productos'));
+app.use('/api/comprobantes', requiereLogin, require('./routes/comprobantes'));
+app.use('/api/reportes',     requiereLogin, require('./routes/reportes'));
+app.use('/api/pdf',          requiereLogin, require('./routes/pdf'));
+
 app.use(express.static('public'));
 
-const clientesRouter = require('./routes/clientes');
-const productosRouter = require('./routes/productos');
-const facturasRouter = require('./routes/facturas');
-const reportesRouter = require('./routes/reportes');
-const pdfRouter     = require('./routes/pdf');
-
-app.use('/api/clientes',  clientesRouter);
-app.use('/api/productos', productosRouter);
-app.use('/api/facturas',  facturasRouter);
-app.use('/api/reportes',  reportesRouter);
-app.use('/api/pdf',       pdfRouter);
-
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
+app.listen(3000, () => console.log('✓ Servidor en http://localhost:3000'));
