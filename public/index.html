@@ -209,19 +209,104 @@
   .actions-group { display: flex; gap: 6px; }
   .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* LOGIN */
+  #login-screen {
+    display: flex; position: fixed; inset: 0; z-index: 9999;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(79,142,247,0.10), transparent 40%),
+      radial-gradient(circle at 80% 80%, rgba(56,217,169,0.08), transparent 40%),
+      var(--bg);
+    align-items: center; justify-content: center;
+  }
+  .login-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 40px; width: 380px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .login-logo { font-size: 30px; margin-bottom: 6px; }
+  .login-box h1 { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .login-box .sub { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+  .login-form { text-align: left; display: flex; flex-direction: column; gap: 14px; }
+  .login-form label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .login-form input { width: 100%; margin-top: 6px; }
+  #login-error { display: none; background: rgba(240,101,133,0.1); border: 1px solid rgba(240,101,133,0.3); color: var(--danger); font-size: 12.5px; text-align: center; padding: 9px; border-radius: 7px; }
+  .login-btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px; transition: background var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .login-btn:hover { background: #3a7de8; }
+  .login-btn:disabled { opacity: 0.6; cursor: default; }
+  .login-hint { margin-top: 20px; font-size: 11px; color: #4a5268; }
+  .login-loader { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+
+  .user-pill { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+  .user-pill .avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .user-pill .role-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: rgba(79,142,247,0.15); color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  /* TABS de tipo de comprobante */
+  .tabs-bar { display: flex; gap: 4px; padding: 14px 20px 0; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .tab-item {
+    background: none; border: none; color: var(--muted); font-size: 12.5px; font-weight: 500;
+    padding: 8px 14px; border-radius: 7px 7px 0 0; cursor: pointer; transition: all var(--transition);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px;
+  }
+  .tab-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab-item.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(79,142,247,0.06); }
+  .tab-count { font-size: 10px; background: var(--border); color: var(--muted); padding: 1px 6px; border-radius: 10px; }
+  .tab-item.active .tab-count { background: var(--accent); color: #fff; }
+
+  /* Dropdown "Nuevo comprobante" */
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    min-width: 240px; box-shadow: 0 12px 32px rgba(0,0,0,0.4); z-index: 60; overflow: hidden;
+  }
+  .dropdown-menu.open { display: block; }
+  .dropdown-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    font-size: 13px; color: var(--text); cursor: pointer; transition: background var(--transition);
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .dropdown-item:hover { background: rgba(79,142,247,0.08); }
+  .dropdown-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 </style>
 </head>
 <body>
 
+<!-- ===== PANTALLA DE LOGIN ===== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">⚡</div>
+    <h1>FacturaPro</h1>
+    <p class="sub">Inicia sesión para continuar</p>
+    <div class="login-form">
+      <div id="login-error"></div>
+      <div>
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="admin@facturapro.com" onkeydown="if(event.key==='Enter')hacerLogin()">
+      </div>
+      <div>
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')hacerLogin()">
+      </div>
+      <button class="login-btn" id="login-btn" onclick="hacerLogin()">Iniciar sesión</button>
+    </div>
+    <p class="login-hint">Por defecto: admin@facturapro.com / admin123</p>
+  </div>
+</div>
+
+<!-- ===== APP (oculta hasta iniciar sesión) ===== -->
+<div id="app-shell" style="display:none;">
+
 <!-- SIDEBAR -->
 <aside class="sidebar">
+
   <div class="sidebar-logo">
     <span>⚡ FacturaPro</span>
     <small>Sistema de Facturación</small>
   </div>
   <nav class="nav">
     <button class="nav-item active" onclick="goTo('dashboard')"><span class="icon">📊</span> Dashboard</button>
-    <button class="nav-item" onclick="goTo('facturas')"><span class="icon">🧾</span> Facturas</button>
+    <button class="nav-item" onclick="goTo('facturas')"><span class="icon">🧾</span> Comprobantes</button>
     <button class="nav-item" onclick="goTo('clientes')"><span class="icon">👥</span> Clientes</button>
     <button class="nav-item" onclick="goTo('productos')"><span class="icon">📦</span> Productos</button>
     <button class="nav-item" onclick="goTo('reportes')"><span class="icon">📈</span> Reportes</button>
@@ -239,6 +324,12 @@
     <h1 id="page-title">Dashboard</h1>
     <div class="topbar-right">
       <span id="fecha-top" style="font-size:12px;color:var(--muted)"></span>
+      <div class="user-pill" id="user-pill" style="display:none;">
+        <div class="avatar" id="user-avatar">A</div>
+        <span id="user-nombre"></span>
+        <span class="role-badge" id="user-rol"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarSesion()">🚪 Salir</button>
     </div>
   </div>
 
@@ -299,22 +390,37 @@
     </div>
   </div>
 
-  <!-- ===== FACTURAS ===== -->
+  <!-- ===== COMPROBANTES ===== -->
   <div class="page" id="page-facturas">
     <div class="table-card">
+      <div class="tabs-bar" id="tabs-comprobantes">
+        <!-- Las pestañas se generan dinámicamente en JS -->
+      </div>
       <div class="table-header">
-        <h2>Todas las facturas</h2>
+        <h2 id="comprobantes-titulo">Todos los comprobantes</h2>
         <div style="display:flex;gap:10px;align-items:center;">
           <div class="search-bar"><input type="text" id="buscar-factura" placeholder="Buscar cliente..." oninput="filtrarFacturas()"></div>
-          <button class="btn btn-primary" onclick="abrirModalFactura()">+ Nueva Factura</button>
+          <div class="dropdown">
+            <button class="btn btn-primary" onclick="toggleDropdownNuevo()">+ Nuevo comprobante ▾</button>
+            <div class="dropdown-menu" id="dropdown-nuevo">
+              <button class="dropdown-item" onclick="abrirModalFactura('boleta')"><span class="dot" style="background:#4f8ef7"></span> Boleta electrónica</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('factura')"><span class="dot" style="background:#38d9a9"></span> Factura electrónica</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('nota_pedido')"><span class="dot" style="background:#f7c948"></span> Nota de pedido</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('guia_remision')"><span class="dot" style="background:#a78bfa"></span> Guía de remisión</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('cotizacion')"><span class="dot" style="background:#7a86a0"></span> Cotización</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('nota_devolucion')"><span class="dot" style="background:#f06585"></span> Nota de devolución</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('nota_credito_f')"><span class="dot" style="background:#38d9a9"></span> Nota de crédito (Factura)</button>
+              <button class="dropdown-item" onclick="abrirModalFactura('nota_credito_b')"><span class="dot" style="background:#4f8ef7"></span> Nota de crédito (Boleta)</button>
+            </div>
+          </div>
         </div>
       </div>
       <table>
         <thead>
-          <tr><th>N° Factura</th><th>Cliente</th><th>Fecha</th><th>Subtotal</th><th>IGV</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
+          <tr><th>Comprobante</th><th>Cliente</th><th>Fecha</th><th>Cond. Pago</th><th>Subtotal</th><th>IGV</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>
         </thead>
         <tbody id="facturas-body">
-          <tr><td colspan="8"><div class="empty"><span class="icon">🧾</span><p>No hay facturas aún</p></div></td></tr>
+          <tr><td colspan="9"><div class="empty"><span class="icon">🧾</span><p>No hay comprobantes aún</p></div></td></tr>
         </tbody>
       </table>
     </div>
@@ -447,11 +553,57 @@
 <div class="modal-overlay" id="modal-factura">
   <div class="modal modal-lg">
     <button class="modal-close" onclick="cerrarModal('modal-factura')">✕</button>
-    <h2>Nueva Factura</h2>
+    <h2 id="modal-factura-title">Nuevo Comprobante</h2>
+    <input type="hidden" id="factura-tipo">
 
-    <div class="form-group" style="margin-bottom:16px;">
-      <label>Cliente *</label>
-      <select id="factura-cliente"></select>
+    <div class="form-grid" style="margin-bottom:8px;">
+      <div class="form-group full">
+        <label>Cliente *</label>
+        <select id="factura-cliente"></select>
+      </div>
+    </div>
+
+    <!-- Condición de pago -->
+    <div class="section-title">Condición de pago</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Condición *</label>
+        <select id="factura-condicion" onchange="onCambioCondicionPago()">
+          <option value="no_afecta">No afecta</option>
+          <option value="contado" selected>Contado</option>
+          <option value="credito">Crédito</option>
+        </select>
+      </div>
+      <div class="form-group" id="grupo-fecha-vencimiento" style="display:none;">
+        <label>Fecha de caducación *</label>
+        <input type="date" id="factura-vencimiento">
+      </div>
+    </div>
+
+    <!-- Campos exclusivos de Guía de Remisión -->
+    <div id="campos-guia" style="display:none;">
+      <div class="section-title">Datos del traslado</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Dirección de partida</label><input type="text" id="guia-partida" placeholder="Almacén Central - Jr. Lima 123"></div>
+        <div class="form-group"><label>Dirección de llegada</label><input type="text" id="guia-llegada" placeholder="Av. Grau 456"></div>
+        <div class="form-group"><label>Transportista</label><input type="text" id="guia-transportista" placeholder="Trans Rápido SAC"></div>
+        <div class="form-group"><label>Fecha de traslado</label><input type="date" id="guia-fecha-traslado"></div>
+      </div>
+    </div>
+
+    <!-- Campos exclusivos de Notas de Crédito / Devolución -->
+    <div id="campos-referencia" style="display:none;">
+      <div class="section-title">Comprobante de referencia</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Comprobante que referencia *</label>
+          <select id="ref-comprobante"></select>
+        </div>
+        <div class="form-group">
+          <label>Motivo *</label>
+          <input type="text" id="ref-motivo" placeholder="Ej: Devolución por producto dañado">
+        </div>
+      </div>
     </div>
 
     <div class="section-title">Agregar productos</div>
@@ -473,13 +625,13 @@
 
     <div class="items-total" id="items-total" style="display:none;">
       <div class="total-row"><span style="color:var(--muted)">Subtotal</span><span class="mono" id="tot-sub">S/ 0.00</span></div>
-      <div class="total-row"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="tot-igv">S/ 0.00</span></div>
+      <div class="total-row" id="fila-igv"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="tot-igv">S/ 0.00</span></div>
       <div class="total-row final"><span>TOTAL</span><span class="mono" id="tot-total">S/ 0.00</span></div>
     </div>
 
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-factura')">Cancelar</button>
-      <button class="btn btn-success" onclick="emitirFactura()">✓ Emitir Factura</button>
+      <button class="btn btn-success" id="btn-emitir" onclick="emitirFactura()">✓ Emitir</button>
     </div>
   </div>
 </div>
@@ -490,9 +642,8 @@
     <button class="modal-close" onclick="cerrarModal('modal-ver-factura')">✕</button>
     <div id="factura-preview-content"></div>
     <div class="modal-footer">
-        <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
-        <button class="btn btn-primary" onclick="descargarPDF()">📄 Descargar PDF</button>
-        <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
     </div>
   </div>
 </div>
@@ -500,12 +651,21 @@
 <!-- TOAST -->
 <div id="toast"></div>
 
+</div><!-- /app-shell -->
+
 <script>
 const API = 'http://localhost:3000/api';
+
+// Helper: todas las llamadas a la API deben enviar la cookie de sesión
+function apiFetch(url, options = {}) {
+  return fetch(url, { ...options, credentials: 'include' });
+}
+
 let facturasData = [];
 let clientesData = [];
 let productosData = [];
 let itemsFactura = [];
+let facturaIdActual = null;
 
 // ===== NAVEGACIÓN =====
 function goTo(page) {
@@ -513,9 +673,9 @@ function goTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.textContent.toLowerCase().includes(page === 'dashboard' ? 'dashboard' : page)) n.classList.add('active');
+    if (n.getAttribute('onclick') === `goTo('${page}')`) n.classList.add('active');
   });
-  const titles = { dashboard: 'Dashboard', facturas: 'Facturas', clientes: 'Clientes', productos: 'Productos', reportes: 'Reportes' };
+  const titles = { dashboard: 'Dashboard', facturas: 'Comprobantes', clientes: 'Clientes', productos: 'Productos', reportes: 'Reportes' };
   document.getElementById('page-title').textContent = titles[page] || page;
 
   if (page === 'dashboard') cargarDashboard();
@@ -543,7 +703,7 @@ document.getElementById('fecha-top').textContent = new Date().toLocaleDateString
 // ===== DASHBOARD =====
 async function cargarDashboard() {
   try {
-    const r = await fetch(`${API}/reportes/resumen`);
+    const r = await apiFetch(`${API}/reportes/resumen`);
     const d = await r.json();
     if (!d.ok) return;
     const { ventas_hoy, ventas_mes, clientes, productos, facturas, productos_stock_bajo } = d.data;
@@ -554,7 +714,7 @@ async function cargarDashboard() {
     document.getElementById('stat-facturas').textContent = facturas;
     document.getElementById('stat-stock').textContent = productos_stock_bajo;
 
-    const rTop = await fetch(`${API}/reportes/productos-mas-vendidos`);
+    const rTop = await apiFetch(`${API}/reportes/productos-mas-vendidos`);
     const dTop = await rTop.json();
     const tbody = document.getElementById('top-productos-body');
     if (dTop.data.length === 0) {
@@ -568,7 +728,7 @@ async function cargarDashboard() {
         </tr>`).join('');
     }
 
-    const rCli = await fetch(`${API}/reportes/mejores-clientes`);
+    const rCli = await apiFetch(`${API}/reportes/mejores-clientes`);
     const dCli = await rCli.json();
     const tcli = document.getElementById('top-clientes-body');
     if (dCli.data.length === 0) {
@@ -586,7 +746,7 @@ async function cargarDashboard() {
 
 // ===== CLIENTES =====
 async function cargarClientes() {
-  const r = await fetch(`${API}/clientes`);
+  const r = await apiFetch(`${API}/clientes`);
   const d = await r.json();
   clientesData = d.data || [];
   renderClientes(clientesData);
@@ -630,7 +790,7 @@ function abrirModalCliente(id = null) {
 }
 
 async function editarCliente(id) {
-  const r = await fetch(`${API}/clientes/${id}`);
+  const r = await apiFetch(`${API}/clientes/${id}`);
   const d = await r.json();
   const c = d.data;
   document.getElementById('cliente-id').value = c.id;
@@ -655,7 +815,7 @@ async function guardarCliente() {
   if (!body.nombre) return toast('El nombre es obligatorio', 'error');
   const url = id ? `${API}/clientes/${id}` : `${API}/clientes`;
   const method = id ? 'PUT' : 'POST';
-  const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const r = await apiFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
   if (d.ok) { toast(id ? 'Cliente actualizado' : 'Cliente creado'); cerrarModal('modal-cliente'); cargarClientes(); }
   else toast(d.error, 'error');
@@ -663,7 +823,7 @@ async function guardarCliente() {
 
 async function eliminarCliente(id, nombre) {
   if (!confirm(`¿Eliminar a "${nombre}"?`)) return;
-  const r = await fetch(`${API}/clientes/${id}`, { method: 'DELETE' });
+  const r = await apiFetch(`${API}/clientes/${id}`, { method: 'DELETE' });
   const d = await r.json();
   if (d.ok) { toast('Cliente eliminado'); cargarClientes(); }
   else toast(d.error, 'error');
@@ -671,7 +831,7 @@ async function eliminarCliente(id, nombre) {
 
 // ===== PRODUCTOS =====
 async function cargarProductos() {
-  const r = await fetch(`${API}/productos`);
+  const r = await apiFetch(`${API}/productos`);
   const d = await r.json();
   productosData = d.data || [];
   renderProductos(productosData);
@@ -718,7 +878,7 @@ function abrirModalProducto() {
 }
 
 async function editarProducto(id) {
-  const r = await fetch(`${API}/productos/${id}`);
+  const r = await apiFetch(`${API}/productos/${id}`);
   const d = await r.json();
   const p = d.data;
   document.getElementById('producto-id').value = p.id;
@@ -744,7 +904,7 @@ async function guardarProducto() {
   if (!body.precio || body.precio <= 0) return toast('El precio debe ser mayor a 0', 'error');
   const url = id ? `${API}/productos/${id}` : `${API}/productos`;
   const method = id ? 'PUT' : 'POST';
-  const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  const r = await apiFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
   if (d.ok) { toast(id ? 'Producto actualizado' : 'Producto creado'); cerrarModal('modal-producto'); cargarProductos(); }
   else toast(d.error, 'error');
@@ -752,44 +912,106 @@ async function guardarProducto() {
 
 async function eliminarProducto(id, nombre) {
   if (!confirm(`¿Eliminar "${nombre}"?`)) return;
-  const r = await fetch(`${API}/productos/${id}`, { method: 'DELETE' });
+  const r = await apiFetch(`${API}/productos/${id}`, { method: 'DELETE' });
   const d = await r.json();
   if (d.ok) { toast('Producto eliminado'); cargarProductos(); }
   else toast(d.error, 'error');
 }
 
 // ===== FACTURAS =====
+// ===== CONFIGURACIÓN DE TIPOS DE COMPROBANTE =====
+const TIPOS_COMPROBANTE = {
+  todos:           { label: 'Todos',                    color: '#7a86a0' },
+  boleta:          { label: 'Boleta electrónica',        color: '#4f8ef7' },
+  factura:         { label: 'Factura electrónica',       color: '#38d9a9' },
+  nota_pedido:     { label: 'Nota de pedido',            color: '#f7c948' },
+  guia_remision:   { label: 'Guía de remisión',          color: '#a78bfa' },
+  cotizacion:      { label: 'Cotización',                color: '#7a86a0' },
+  nota_devolucion: { label: 'Nota de devolución',        color: '#f06585' },
+  nota_credito_f:  { label: 'Nota crédito (Factura)',    color: '#38d9a9' },
+  nota_credito_b:  { label: 'Nota crédito (Boleta)',     color: '#4f8ef7' },
+};
+let tipoActivo = 'todos';
+
+function toggleDropdownNuevo() {
+  document.getElementById('dropdown-nuevo').classList.toggle('open');
+}
+// Cerrar el dropdown si se hace clic fuera
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('dropdown-nuevo');
+  if (dd && !e.target.closest('.dropdown')) dd.classList.remove('open');
+});
+
 async function cargarFacturas() {
-  const r = await fetch(`${API}/facturas`);
+  const r = await apiFetch(`${API}/comprobantes`);
   const d = await r.json();
   facturasData = d.data || [];
-  renderFacturas(facturasData);
+  renderTabsComprobantes();
+  aplicarFiltroTipo();
+}
+
+function renderTabsComprobantes() {
+  const cont = document.getElementById('tabs-comprobantes');
+  cont.innerHTML = Object.entries(TIPOS_COMPROBANTE).map(([key, cfg]) => {
+    const count = key === 'todos' ? facturasData.length : facturasData.filter(f => f.tipo === key).length;
+    return `<button class="tab-item ${tipoActivo === key ? 'active' : ''}" onclick="seleccionarTipo('${key}')">
+      ${cfg.label} <span class="tab-count">${count}</span>
+    </button>`;
+  }).join('');
+}
+
+function seleccionarTipo(tipo) {
+  tipoActivo = tipo;
+  renderTabsComprobantes();
+  aplicarFiltroTipo();
+}
+
+function aplicarFiltroTipo() {
+  const q = (document.getElementById('buscar-factura').value || '').toLowerCase();
+  let lista = tipoActivo === 'todos' ? facturasData : facturasData.filter(f => f.tipo === tipoActivo);
+  if (q) lista = lista.filter(f => f.cliente_nombre.toLowerCase().includes(q));
+  document.getElementById('comprobantes-titulo').textContent = tipoActivo === 'todos'
+    ? 'Todos los comprobantes'
+    : TIPOS_COMPROBANTE[tipoActivo].label + 's';
+  renderFacturas(lista);
 }
 
 function renderFacturas(lista) {
   const tbody = document.getElementById('facturas-body');
   if (lista.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty"><span class="icon">🧾</span><p>No hay facturas aún</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty"><span class="icon">🧾</span><p>No hay comprobantes aún</p></div></td></tr>';
     return;
   }
+  const condicionLabel = { no_afecta: 'No afecta', contado: 'Contado', credito: 'Crédito' };
   tbody.innerHTML = lista.map(f => {
-    const estadoBadge = { emitida: 'badge-blue', pagada: 'badge-green', anulada: 'badge-red' };
-    const num = `F001-${String(f.numero).padStart(6,'0')}`;
+    const estadoBadge = { emitido: 'badge-blue', pagado: 'badge-green', anulado: 'badge-red', borrador: 'badge-yellow', enviado: 'badge-blue', aprobado: 'badge-green', rechazado: 'badge-red', pendiente: 'badge-yellow', atendido: 'badge-green' };
+    const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#7a86a0' };
+    const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
     const fecha = new Date(f.fecha).toLocaleDateString('es-PE');
+    const credVencido = f.condicion_pago === 'credito' && f.fecha_vencimiento && new Date(f.fecha_vencimiento) < new Date() && f.estado !== 'pagado';
     return `<tr>
-      <td class="mono">${num}</td>
+      <td>
+        <span class="mono">${num}</span><br>
+        <small style="color:${cfg.color}">${cfg.label}</small>
+      </td>
       <td><strong>${f.cliente_nombre}</strong><br><small style="color:var(--muted)">${f.cliente_documento||''}</small></td>
       <td>${fecha}</td>
+      <td>
+        <span class="badge ${f.condicion_pago === 'credito' ? (credVencido ? 'badge-red' : 'badge-yellow') : f.condicion_pago === 'contado' ? 'badge-green' : 'badge-blue'}">
+          ${condicionLabel[f.condicion_pago] || f.condicion_pago}
+        </span>
+        ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<br><small style="color:${credVencido?'var(--danger)':'var(--muted)'}">${credVencido?'⚠️ Venció: ':'Vence: '}${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE')}</small>` : ''}
+      </td>
       <td class="mono">S/ ${f.subtotal.toFixed(2)}</td>
       <td class="mono">S/ ${f.igv.toFixed(2)}</td>
       <td class="mono"><strong>S/ ${f.total.toFixed(2)}</strong></td>
-      <td><span class="badge ${estadoBadge[f.estado]}">${f.estado}</span></td>
+      <td><span class="badge ${estadoBadge[f.estado]||'badge-blue'}">${f.estado}</span></td>
       <td>
         <div class="actions-group">
           <button class="btn btn-ghost btn-sm" onclick="verFactura(${f.id})">👁️ Ver</button>
-          ${f.estado !== 'anulada' ? `
-            ${f.estado !== 'pagada' ? `<button class="btn btn-success btn-sm" onclick="cambiarEstado(${f.id},'pagada')">✓ Pagar</button>` : ''}
-            <button class="btn btn-danger btn-sm" onclick="cambiarEstado(${f.id},'anulada')">✕</button>
+          ${f.estado !== 'anulado' ? `
+            ${f.estado === 'emitido' && (f.tipo === 'factura' || f.tipo === 'boleta') ? `<button class="btn btn-success btn-sm" onclick="cambiarEstado(${f.id},'pagado')">✓ Pagar</button>` : ''}
+            <button class="btn btn-danger btn-sm" onclick="cambiarEstado(${f.id},'anulado')">✕</button>
           ` : ''}
         </div>
       </td>
@@ -798,28 +1020,81 @@ function renderFacturas(lista) {
 }
 
 function filtrarFacturas() {
-  const q = document.getElementById('buscar-factura').value.toLowerCase();
-  renderFacturas(facturasData.filter(f => f.cliente_nombre.toLowerCase().includes(q)));
+  aplicarFiltroTipo();
 }
 
-async function abrirModalFactura() {
+// Config de qué campos mostrar según el tipo de comprobante
+const CONFIG_TIPO = {
+  boleta:          { afecta_igv: true,  necesita_ref: false, es_guia: false, condicion_default: 'contado' },
+  factura:         { afecta_igv: true,  necesita_ref: false, es_guia: false, condicion_default: 'contado' },
+  nota_pedido:     { afecta_igv: false, necesita_ref: false, es_guia: false, condicion_default: 'no_afecta' },
+  guia_remision:   { afecta_igv: false, necesita_ref: false, es_guia: true,  condicion_default: 'no_afecta' },
+  cotizacion:      { afecta_igv: false, necesita_ref: false, es_guia: false, condicion_default: 'no_afecta' },
+  nota_devolucion: { afecta_igv: true,  necesita_ref: true,   es_guia: false, condicion_default: 'no_afecta' },
+  nota_credito_f:  { afecta_igv: true,  necesita_ref: true,   es_guia: false, condicion_default: 'no_afecta' },
+  nota_credito_b:  { afecta_igv: true,  necesita_ref: true,   es_guia: false, condicion_default: 'no_afecta' },
+};
+
+async function abrirModalFactura(tipoPreseleccionado) {
+  document.getElementById('dropdown-nuevo').classList.remove('open');
+  const tipo = tipoPreseleccionado || 'boleta';
+  const cfg = CONFIG_TIPO[tipo];
+
+  document.getElementById('factura-tipo').value = tipo;
+  document.getElementById('modal-factura-title').textContent = 'Nuevo: ' + TIPOS_COMPROBANTE[tipo].label;
+  document.getElementById('btn-emitir').textContent = '✓ Emitir ' + TIPOS_COMPROBANTE[tipo].label;
+
   itemsFactura = [];
   renderItems();
-  const rc = await fetch(`${API}/clientes`);
+
+  // Condición de pago: preseleccionar según el tipo, pero el usuario puede cambiarla
+  document.getElementById('factura-condicion').value = cfg.condicion_default;
+  onCambioCondicionPago();
+
+  // Mostrar/ocultar bloque de Guía de Remisión
+  document.getElementById('campos-guia').style.display = cfg.es_guia ? 'block' : 'none';
+
+  // Mostrar/ocultar bloque de referencia (notas de crédito / devolución)
+  document.getElementById('campos-referencia').style.display = cfg.necesita_ref ? 'block' : 'none';
+  document.getElementById('ref-motivo').value = '';
+
+  // Cargar clientes
+  const rc = await apiFetch(`${API}/clientes`);
   const dc = await rc.json();
   const selCli = document.getElementById('factura-cliente');
   selCli.innerHTML = '<option value="">-- Selecciona un cliente --</option>';
   (dc.data || []).forEach(c => {
     selCli.innerHTML += `<option value="${c.id}">${c.nombre} (${c.documento||'S/D'})</option>`;
   });
-  const rp = await fetch(`${API}/productos`);
+
+  // Cargar productos
+  const rp = await apiFetch(`${API}/productos`);
   const dp = await rp.json();
   const selProd = document.getElementById('item-producto');
   selProd.innerHTML = '<option value="">-- Selecciona producto --</option>';
   (dp.data || []).forEach(p => {
     selProd.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-stock="${p.stock}">${p.nombre} — S/ ${p.precio.toFixed(2)} (stock: ${p.stock})</option>`;
   });
+
+  // Cargar comprobantes de referencia si aplica (facturas/boletas para vincular notas)
+  if (cfg.necesita_ref) {
+    const tipoRef = tipo === 'nota_credito_b' ? 'boleta' : tipo === 'nota_credito_f' ? 'factura' : null;
+    const r = await apiFetch(`${API}/comprobantes${tipoRef ? '?tipo=' + tipoRef : ''}`);
+    const d = await r.json();
+    const selRef = document.getElementById('ref-comprobante');
+    selRef.innerHTML = '<option value="">-- Selecciona comprobante --</option>';
+    (d.data || []).filter(c => c.estado !== 'anulado').forEach(c => {
+      const num = `${c.serie}-${String(c.numero).padStart(6,'0')}`;
+      selRef.innerHTML += `<option value="${c.id}">${num} — ${c.cliente_nombre} (S/ ${c.total.toFixed(2)})</option>`;
+    });
+  }
+
   abrirModal('modal-factura');
+}
+
+function onCambioCondicionPago() {
+  const condicion = document.getElementById('factura-condicion').value;
+  document.getElementById('grupo-fecha-vencimiento').style.display = condicion === 'credito' ? 'block' : 'none';
 }
 
 function agregarItem() {
@@ -828,8 +1103,11 @@ function agregarItem() {
   const opt = sel.options[sel.selectedIndex];
   if (!sel.value) return toast('Selecciona un producto', 'error');
   if (!cantidad || cantidad < 1) return toast('La cantidad debe ser mayor a 0', 'error');
+  const tipo = document.getElementById('factura-tipo').value;
   const stock = parseInt(opt.dataset.stock);
-  if (cantidad > stock) return toast(`Stock insuficiente. Disponible: ${stock}`, 'error');
+  if (CONFIG_TIPO[tipo]?.es_guia === false && tipo !== 'nota_devolucion' && tipo !== 'cotizacion' && tipo !== 'nota_pedido' && cantidad > stock) {
+    return toast(`Stock insuficiente. Disponible: ${stock}`, 'error');
+  }
   const existe = itemsFactura.find(i => i.producto_id == sel.value);
   if (existe) { existe.cantidad += cantidad; existe.subtotal = existe.precio * existe.cantidad; }
   else {
@@ -853,9 +1131,17 @@ function renderItems() {
       <button class="btn btn-danger btn-sm" onclick="quitarItem(${i})">✕</button>
     </div>`;
   });
+
+  const tipo = document.getElementById('factura-tipo').value;
+  const condicion = document.getElementById('factura-condicion').value;
+  const cfg = CONFIG_TIPO[tipo] || {};
+  const aplicaIgv = cfg.afecta_igv && condicion !== 'no_afecta';
+
   const sub = itemsFactura.reduce((a,i) => a + i.subtotal, 0);
-  const igv = sub * 0.18;
+  const igv = aplicaIgv ? sub * 0.18 : 0;
   const total = sub + igv;
+
+  document.getElementById('fila-igv').style.display = aplicaIgv ? 'flex' : 'none';
   document.getElementById('tot-sub').textContent = 'S/ ' + sub.toFixed(2);
   document.getElementById('tot-igv').textContent = 'S/ ' + igv.toFixed(2);
   document.getElementById('tot-total').textContent = 'S/ ' + total.toFixed(2);
@@ -863,36 +1149,127 @@ function renderItems() {
 }
 
 async function emitirFactura() {
+  const tipo = document.getElementById('factura-tipo').value;
   const cliente_id = document.getElementById('factura-cliente').value;
+  const condicion_pago = document.getElementById('factura-condicion').value;
+  const cfg = CONFIG_TIPO[tipo] || {};
+
   if (!cliente_id) return toast('Selecciona un cliente', 'error');
   if (itemsFactura.length === 0) return toast('Agrega al menos un producto', 'error');
-  const body = { cliente_id: parseInt(cliente_id), items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad })) };
-  const r = await fetch(`${API}/facturas`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+
+  let fecha_vencimiento = null;
+  if (condicion_pago === 'credito') {
+    fecha_vencimiento = document.getElementById('factura-vencimiento').value;
+    if (!fecha_vencimiento) return toast('Indica la fecha de caducación del crédito', 'error');
+  }
+
+  const body = {
+    tipo,
+    cliente_id: parseInt(cliente_id),
+    condicion_pago,
+    fecha_vencimiento,
+    items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad })),
+  };
+
+  if (cfg.es_guia) {
+    body.direccion_partida = document.getElementById('guia-partida').value;
+    body.direccion_llegada = document.getElementById('guia-llegada').value;
+    body.transportista     = document.getElementById('guia-transportista').value;
+    body.fecha_traslado    = document.getElementById('guia-fecha-traslado').value;
+  }
+
+  if (cfg.necesita_ref) {
+    const ref = document.getElementById('ref-comprobante').value;
+    const motivo = document.getElementById('ref-motivo').value;
+    if (!ref) return toast('Selecciona el comprobante que referencia', 'error');
+    if (!motivo) return toast('Indica el motivo', 'error');
+    body.comprobante_ref_id = parseInt(ref);
+    body.motivo_ref = motivo;
+  }
+
+  const r = await apiFetch(`${API}/comprobantes`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
-  if (d.ok) { toast(`Factura ${d.numero} emitida por S/ ${d.total.toFixed(2)}`); cerrarModal('modal-factura'); cargarFacturas(); }
+  if (d.ok) { toast(`${TIPOS_COMPROBANTE[tipo].label} ${d.numero} emitida por S/ ${d.total.toFixed(2)}`); cerrarModal('modal-factura'); cargarFacturas(); }
   else toast(d.error, 'error');
 }
 
 async function verFactura(id) {
-  const r = await fetch(`${API}/facturas/${id}`);
+  facturaIdActual = id;
+  const r = await apiFetch(`${API}/comprobantes/${id}`);
   const d = await r.json();
   const f = d.data;
-  const num = `F001-${String(f.numero).padStart(6,'0')}`;
+  const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#4f8ef7' };
+  const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
   const fecha = new Date(f.fecha).toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric' });
+
+  const estadoColores = {
+    emitido:   { bg:'#e8f0ff', fg:'#2563eb' },
+    pagado:    { bg:'#e6f9f4', fg:'#1a9974' },
+    anulado:   { bg:'#fde8ee', fg:'#d63660' },
+    borrador:  { bg:'#fff7e0', fg:'#a87c00' },
+    enviado:   { bg:'#e8f0ff', fg:'#2563eb' },
+    aprobado:  { bg:'#e6f9f4', fg:'#1a9974' },
+    rechazado: { bg:'#fde8ee', fg:'#d63660' },
+    pendiente: { bg:'#fff7e0', fg:'#a87c00' },
+    atendido:  { bg:'#e6f9f4', fg:'#1a9974' },
+  };
+  const ec = estadoColores[f.estado] || estadoColores.emitido;
+
+  const condicionLabel = { no_afecta: 'No afecta', contado: 'Contado', credito: 'Crédito' };
+
+  // Bloque: condición de pago + vencimiento
+  let condicionHtml = `
+    <div class="fp-section">
+      <div class="fp-label">Condición de pago</div>
+      <div style="font-weight:600;">${condicionLabel[f.condicion_pago] || f.condicion_pago}</div>
+      ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<div style="color:#555;">Vence: ${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE')}</div>` : ''}
+    </div>`;
+
+  // Bloque: referencia (notas de crédito / devolución)
+  let referenciaHtml = '';
+  if (f.comprobante_ref_id && f.ref_tipo) {
+    const refCfg = TIPOS_COMPROBANTE[f.ref_tipo] || { label: f.ref_tipo };
+    const refNum = `${f.ref_serie}-${String(f.ref_numero).padStart(6,'0')}`;
+    referenciaHtml = `
+      <div class="fp-section" style="background:#f8f9ff;padding:12px 14px;border-radius:8px;border:1px solid #e8edff;">
+        <div class="fp-label">Comprobante referenciado</div>
+        <div style="font-weight:600;">${refCfg.label} ${refNum}</div>
+        ${f.motivo_ref ? `<div style="color:#555;margin-top:2px;">Motivo: ${f.motivo_ref}</div>` : ''}
+      </div>`;
+  }
+
+  // Bloque: datos de traslado (guía de remisión)
+  let guiaHtml = '';
+  if (f.tipo === 'guia_remision') {
+    guiaHtml = `
+      <div class="fp-section" style="background:#f8f9ff;padding:12px 14px;border-radius:8px;border:1px solid #e8edff;">
+        <div class="fp-label">Datos del traslado</div>
+        <div style="color:#333;line-height:1.7;">
+          ${f.direccion_partida ? `<strong>Partida:</strong> ${f.direccion_partida}<br>` : ''}
+          ${f.direccion_llegada ? `<strong>Llegada:</strong> ${f.direccion_llegada}<br>` : ''}
+          ${f.transportista ? `<strong>Transportista:</strong> ${f.transportista}<br>` : ''}
+          ${f.fecha_traslado ? `<strong>Fecha de traslado:</strong> ${new Date(f.fecha_traslado).toLocaleDateString('es-PE')}` : ''}
+        </div>
+      </div>`;
+  }
+
+  const aplicaIgv = f.igv && f.igv > 0;
+
   document.getElementById('factura-preview-content').innerHTML = `
     <div class="factura-preview">
       <div class="fp-header">
         <div>
           <div class="fp-title">⚡ FacturaPro</div>
-          <div style="font-size:11px;color:#888;margin-top:4px;">Sistema de Facturación</div>
+          <div style="font-size:11px;color:#888;margin-top:4px;">${cfg.label}</div>
         </div>
         <div style="text-align:right;">
           <div class="fp-num">${num}</div>
           <div style="font-size:12px;color:#888;">${fecha}</div>
-          <div style="margin-top:6px;"><span style="background:${f.estado==='pagada'?'#e6f9f4':f.estado==='anulada'?'#fde8ee':'#e8f0ff'};color:${f.estado==='pagada'?'#1a9974':f.estado==='anulada'?'#d63660':'#2563eb'};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">${f.estado.toUpperCase()}</span></div>
+          <div style="margin-top:6px;"><span style="background:${ec.bg};color:${ec.fg};padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">${f.estado.toUpperCase()}</span></div>
         </div>
       </div>
       <hr style="border:none;border-top:1px solid #eee;margin:0 0 16px;">
+
       <div class="fp-section">
         <div class="fp-label">Cliente</div>
         <div style="font-weight:600;font-size:15px;">${f.cliente_nombre}</div>
@@ -900,22 +1277,30 @@ async function verFactura(id) {
         <div style="color:#555;">${f.cliente_direccion || ''}</div>
         <div style="color:#555;">${f.cliente_email || ''}</div>
       </div>
+
+      ${condicionHtml}
+      ${referenciaHtml}
+      ${guiaHtml}
+
       <table class="fp-table">
         <thead><tr><th>Producto</th><th>Cant.</th><th style="text-align:right;">P. Unit.</th><th style="text-align:right;">Subtotal</th></tr></thead>
         <tbody>
           ${f.detalle.map(d => `<tr>
-            <td>${d.producto_nombre}</td>
-            <td>${d.cantidad}</td>
+            <td>${d.producto_nombre || d.descripcion_libre || '—'}</td>
+            <td>${d.cantidad} ${d.unidad && d.unidad !== 'UND' ? d.unidad : ''}</td>
             <td style="text-align:right;">S/ ${d.precio_unitario.toFixed(2)}</td>
             <td style="text-align:right;">S/ ${d.subtotal.toFixed(2)}</td>
           </tr>`).join('')}
         </tbody>
       </table>
+
       <div class="fp-totals">
         <div class="fp-total-row"><span style="color:#888">Subtotal</span><span>S/ ${f.subtotal.toFixed(2)}</span></div>
-        <div class="fp-total-row"><span style="color:#888">IGV (18%)</span><span>S/ ${f.igv.toFixed(2)}</span></div>
+        ${f.descuento > 0 ? `<div class="fp-total-row"><span style="color:#888">Descuento</span><span>- S/ ${f.descuento.toFixed(2)}</span></div>` : ''}
+        ${aplicaIgv ? `<div class="fp-total-row"><span style="color:#888">IGV (18%)</span><span>S/ ${f.igv.toFixed(2)}</span></div>` : ''}
         <div class="fp-total-row final"><span>TOTAL</span><span>S/ ${f.total.toFixed(2)}</span></div>
       </div>
+
       <div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center;">
         Generado por FacturaPro — Gracias por su preferencia
       </div>
@@ -924,9 +1309,9 @@ async function verFactura(id) {
 }
 
 async function cambiarEstado(id, estado) {
-  const msgs = { pagada: '¿Marcar como pagada?', anulada: '¿Anular esta factura? El stock será devuelto.' };
-  if (!confirm(msgs[estado])) return;
-  const r = await fetch(`${API}/facturas/${id}/estado`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ estado }) });
+  const msgs = { pagado: '¿Marcar como pagado?', anulado: '¿Anular este comprobante? El stock será devuelto si aplica.' };
+  if (!confirm(msgs[estado] || `¿Cambiar estado a ${estado}?`)) return;
+  const r = await apiFetch(`${API}/comprobantes/${id}/estado`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ estado }) });
   const d = await r.json();
   if (d.ok) { toast(d.mensaje); cargarFacturas(); }
   else toast(d.error, 'error');
@@ -935,7 +1320,7 @@ async function cambiarEstado(id, estado) {
 // ===== REPORTES =====
 async function cargarReportes() {
   try {
-    const r1 = await fetch(`${API}/reportes/igv-mes`);
+    const r1 = await apiFetch(`${API}/reportes/igv-mes`);
     const d1 = await r1.json();
     if (d1.ok && d1.data) {
       document.getElementById('rep-subtotal').textContent = 'S/ ' + (d1.data.base_imponible||0).toFixed(2);
@@ -943,19 +1328,19 @@ async function cargarReportes() {
       document.getElementById('rep-total').textContent = 'S/ ' + (d1.data.total_con_igv||0).toFixed(2);
     }
 
-    const r2 = await fetch(`${API}/reportes/ventas-por-dia`);
+    const r2 = await apiFetch(`${API}/reportes/ventas-por-dia`);
     const d2 = await r2.json();
     const tdias = document.getElementById('rep-dias-body');
     if (d2.data.length === 0) { tdias.innerHTML = '<tr><td colspan="3"><div class="empty"><p>Sin ventas aún</p></div></td></tr>'; }
     else { tdias.innerHTML = d2.data.map(v => `<tr><td class="mono">${v.dia}</td><td><span class="badge badge-blue">${v.cantidad_facturas}</span></td><td class="mono">S/ ${v.total.toFixed(2)}</td></tr>`).join(''); }
 
-    const r3 = await fetch(`${API}/reportes/ventas-por-categoria`);
+    const r3 = await apiFetch(`${API}/reportes/ventas-por-categoria`);
     const d3 = await r3.json();
     const tcat = document.getElementById('rep-cat-body');
     if (d3.data.length === 0) { tcat.innerHTML = '<tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr>'; }
     else { tcat.innerHTML = d3.data.map(c => `<tr><td><span class="badge badge-blue">${c.categoria}</span></td><td>${c.unidades_vendidas}</td><td class="mono">S/ ${c.ingresos.toFixed(2)}</td></tr>`).join(''); }
 
-    const r4 = await fetch(`${API}/reportes/facturas-por-estado`);
+    const r4 = await apiFetch(`${API}/reportes/facturas-por-estado`);
     const d4 = await r4.json();
     const badgeMap = { emitida:'badge-blue', pagada:'badge-green', anulada:'badge-red' };
     const test = document.getElementById('rep-estados-body');
@@ -964,19 +1349,83 @@ async function cargarReportes() {
   } catch(e) { toast('Error cargando reportes', 'error'); }
 }
 
-let facturaIdActual = null;
-
-async function verFactura(id) {
-  facturaIdActual = id; // guardar el id para el PDF
-  // ... resto del código existente sin cambios
+// ===== LOGIN / SESIÓN =====
+async function verificarSesion() {
+  try {
+    const r = await apiFetch(`${API}/auth/me`);
+    const d = await r.json();
+    if (d.ok) {
+      mostrarApp(d.usuario);
+    } else {
+      document.getElementById('login-screen').style.display = 'flex';
+    }
+  } catch (e) {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
 }
 
-function descargarPDF() {
-  if (!facturaIdActual) return;
-  window.open(`http://localhost:3000/api/pdf/${facturaIdActual}`, '_blank');
+function mostrarApp(usuario) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+  document.getElementById('user-pill').style.display = 'flex';
+  document.getElementById('user-nombre').textContent = usuario.nombre;
+  document.getElementById('user-rol').textContent = usuario.rol;
+  document.getElementById('user-avatar').textContent = usuario.nombre.charAt(0).toUpperCase();
+  cargarDashboard();
 }
-// Cargar dashboard al inicio
-cargarDashboard();
+
+async function hacerLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errDiv = document.getElementById('login-error');
+  const btn = document.getElementById('login-btn');
+  errDiv.style.display = 'none';
+
+  if (!email || !pass) {
+    errDiv.textContent = 'Completa email y contraseña';
+    errDiv.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="login-loader"></span> Ingresando...';
+
+  try {
+    const r = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password: pass })
+    });
+    const d = await r.json();
+
+    if (d.ok) {
+      document.getElementById('login-pass').value = '';
+      mostrarApp(d.usuario);
+    } else {
+      errDiv.textContent = d.error || 'No se pudo iniciar sesión';
+      errDiv.style.display = 'block';
+    }
+  } catch (e) {
+    errDiv.textContent = 'No se pudo conectar con el servidor';
+    errDiv.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Iniciar sesión';
+  }
+}
+
+async function cerrarSesion() {
+  await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' });
+  document.getElementById('app-shell').style.display = 'none';
+  document.getElementById('user-pill').style.display = 'none';
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// Verificar sesión al cargar la página
+verificarSesion();
 </script>
 </body>
 </html>
