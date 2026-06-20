@@ -366,6 +366,11 @@
         <div class="stat-value blue" id="stat-facturas">0</div>
         <div class="stat-sub">emitidas</div>
       </div>
+      <div class="stat-card red">
+        <div class="stat-label">Por cobrar (crédito)</div>
+        <div class="stat-value red mono" id="stat-por-cobrar">S/ 0.00</div>
+        <div class="stat-sub" id="stat-por-cobrar-sub">pendiente</div>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -387,6 +392,16 @@
           </tbody>
         </table>
       </div>
+    </div>
+
+    <div class="table-card" style="margin-top:20px;">
+      <div class="table-header"><h2>💳 Créditos pendientes</h2></div>
+      <table>
+        <thead><tr><th>Comprobante</th><th>Cliente</th><th>Vencimiento</th><th>Monto</th><th>Estado</th></tr></thead>
+        <tbody id="creditos-pendientes-body">
+          <tr><td colspan="5"><div class="empty"><p>Sin créditos pendientes</p></div></td></tr>
+        </tbody>
+      </table>
     </div>
   </div>
 
@@ -643,7 +658,8 @@
     <div id="factura-preview-content"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
-      <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="btn btn-primary" onclick="descargarPDF()">📄 Descargar PDF</button>
     </div>
   </div>
 </div>
@@ -706,13 +722,14 @@ async function cargarDashboard() {
     const r = await apiFetch(`${API}/reportes/resumen`);
     const d = await r.json();
     if (!d.ok) return;
-    const { ventas_hoy, ventas_mes, clientes, productos, facturas, productos_stock_bajo } = d.data;
+    const { ventas_hoy, ventas_mes, clientes, productos, facturas, productos_stock_bajo, por_cobrar_credito } = d.data;
     document.getElementById('stat-hoy').textContent = 'S/ ' + ventas_hoy.toFixed(2);
     document.getElementById('stat-mes').textContent = 'S/ ' + ventas_mes.toFixed(2);
     document.getElementById('stat-clientes').textContent = clientes;
     document.getElementById('stat-productos').textContent = productos;
     document.getElementById('stat-facturas').textContent = facturas;
     document.getElementById('stat-stock').textContent = productos_stock_bajo;
+    document.getElementById('stat-por-cobrar').textContent = 'S/ ' + (por_cobrar_credito || 0).toFixed(2);
 
     const rTop = await apiFetch(`${API}/reportes/productos-mas-vendidos`);
     const dTop = await rTop.json();
@@ -740,6 +757,30 @@ async function cargarDashboard() {
           <td><span class="badge badge-green">${c.total_facturas}</span></td>
           <td class="mono">S/ ${c.total_compras.toFixed(2)}</td>
         </tr>`).join('');
+    }
+
+    // Créditos pendientes
+    const rCred = await apiFetch(`${API}/reportes/creditos-pendientes`);
+    const dCred = await rCred.json();
+    const tCred = document.getElementById('creditos-pendientes-body');
+    if (!dCred.ok || dCred.data.length === 0) {
+      tCred.innerHTML = '<tr><td colspan="5"><div class="empty"><p>Sin créditos pendientes</p></div></td></tr>';
+      document.getElementById('stat-por-cobrar-sub').textContent = 'pendiente';
+    } else {
+      const vencidos = dCred.data.filter(c => c.vencido).length;
+      document.getElementById('stat-por-cobrar-sub').textContent = vencidos > 0 ? `${vencidos} vencido(s)` : 'pendiente';
+      tCred.innerHTML = dCred.data.map(c => {
+        const cfg = TIPOS_COMPROBANTE[c.tipo] || { label: c.tipo };
+        const num = `${c.serie}-${String(c.numero).padStart(6,'0')}`;
+        const fechaVto = c.fecha_vencimiento ? new Date(c.fecha_vencimiento).toLocaleDateString('es-PE') : '—';
+        return `<tr>
+          <td><span class="mono">${num}</span><br><small style="color:var(--muted)">${cfg.label}</small></td>
+          <td>${c.cliente_nombre}</td>
+          <td>${fechaVto}</td>
+          <td class="mono">S/ ${c.total.toFixed(2)}</td>
+          <td>${c.vencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-yellow">Pendiente</span>'}</td>
+        </tr>`;
+      }).join('');
     }
   } catch(e) { toast('Error conectando con el servidor', 'error'); }
 }
@@ -1306,6 +1347,11 @@ async function verFactura(id) {
       </div>
     </div>`;
   abrirModal('modal-ver-factura');
+}
+
+function descargarPDF() {
+  if (!facturaIdActual) return toast('No hay comprobante seleccionado', 'error');
+  window.open(`${API}/pdf/${facturaIdActual}`, '_blank');
 }
 
 async function cambiarEstado(id, estado) {
