@@ -86,6 +86,18 @@ router.post('/', (req, res) => {
 
     const config = TIPOS[tipo];
 
+    // Agrega esto en router.post('/') justo después de extraer el tipo:
+const { tienePermiso } = require('../middleware/permisos');
+
+// Dentro del router.post('/'), después de "const { tipo, ... } = req.body":
+const permisoTipo = `comprobantes:crear_${tipo}`;
+if (!tienePermiso(req.session.usuario.rol, permisoTipo)) {
+  return res.status(403).json({
+    ok: false,
+    error: `Tu rol no puede crear comprobantes de tipo: ${TIPOS[tipo]?.label || tipo}`
+  });
+}
+
     // Validar condición de pago
     const condicionesValidas = ['no_afecta', 'contado', 'credito'];
     if (!condicionesValidas.includes(condicion_pago)) {
@@ -256,5 +268,16 @@ router.get('/meta/tipos', (req, res) => {
   }));
   res.json({ ok: true, data });
 });
+// Dentro del router.patch('/:id/estado'), después de obtener el estado:
+const { tienePermiso } = require('../middleware/permisos');
+const rol = req.session.usuario.rol;
+
+if (estado === 'anulado' && !tienePermiso(rol, 'comprobantes:anular')) {
+  return res.status(403).json({ ok: false, error: 'No tienes permiso para anular comprobantes' });
+}
+if (estado === 'pagado' && !tienePermiso(rol, 'comprobantes:pagar')) {
+  return res.status(403).json({ ok: false, error: 'No tienes permiso para marcar como pagado' });
+}
+
 
 module.exports = router;
