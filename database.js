@@ -1,5 +1,11 @@
+require('dotenv').config();
+const path = require('node:path');
 const Database = require("better-sqlite3");
-const db = new Database("facturacion.db");
+const configuredPath = process.env.DB_PATH || 'facturacion.db';
+const databasePath = configuredPath === ':memory:'
+  ? configuredPath
+  : path.resolve(__dirname, configuredPath);
+const db = new Database(databasePath);
 
 db.exec(`
   -- Clientes
@@ -98,7 +104,8 @@ db.exec(`
     nombre TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    rol TEXT DEFAULT 'vendedor'
+    rol TEXT DEFAULT 'vendedor',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   -- Series por tipo de comprobante
@@ -109,6 +116,16 @@ db.exec(`
     ultimo_numero INTEGER DEFAULT 0
   );
 `);
+
+const columnasClientes = db.pragma('table_info(clientes)');
+if (!columnasClientes.some(columna => columna.name === 'tipo_documento')) {
+  db.exec("ALTER TABLE clientes ADD COLUMN tipo_documento TEXT DEFAULT 'DNI'");
+}
+
+const columnasProductos = db.pragma('table_info(productos)');
+if (!columnasProductos.some(columna => columna.name === 'unidad')) {
+  db.exec("ALTER TABLE productos ADD COLUMN unidad TEXT DEFAULT 'UND'");
+}
 
 // Insertar series por defecto si no existen
 const seriesDefault = [

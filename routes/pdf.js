@@ -1,7 +1,61 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../database');
-const htmlPdf = require('html-pdf-node');
+const fs = require('node:fs');
+const path = require('node:path');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium').default;
+const { requierePermiso } = require('../middleware/permisos');
+
+function escaparHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[character]);
+}
+
+function chromeLocal() {
+  const programFilesX86 = process.env['ProgramFiles(x86)'];
+  const candidates = [
+    process.env.CHROME_EXECUTABLE_PATH,
+    programFilesX86 && path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    process.env.ProgramFiles && path.join(process.env.ProgramFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+  ];
+  return candidates.find(candidate => candidate && fs.existsSync(candidate));
+}
+
+async function generarPdf(html) {
+  let browser;
+  if (process.platform === 'win32' || process.env.CHROME_EXECUTABLE_PATH) {
+    const executablePath = chromeLocal();
+    if (!executablePath) {
+      throw new Error('Chrome no encontrado. Configura CHROME_EXECUTABLE_PATH.');
+    }
+    browser = await puppeteer.launch({ executablePath, headless: true });
+  } else {
+    browser = await puppeteer.launch({
+      args: await puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' }),
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: 'shell',
+    });
+  }
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    return await page.pdf({
+      format: 'A4',
+      margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+    });
+  } finally {
+    await browser.close();
+  }
+}
 
 const TIPOS_LABEL = {
   factura:         'Factura Electrónica',
@@ -20,7 +74,7 @@ const CONDICION_LABEL = {
   credito:   'Crédito',
 };
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
   try {
     const comp = db.prepare(`
       SELECT c.*, cl.nombre as cliente_nombre, cl.documento as cliente_documento,
@@ -43,7 +97,8 @@ router.get('/:id', async (req, res) => {
     `).all(req.params.id);
 
     const num    = `${comp.serie}-${String(comp.numero).padStart(6, '0')}`;
-    const label  = TIPOS_LABEL[comp.tipo] || comp.tipo;
+    const numHtml = escaparHtml(num);
+    const label  = escaparHtml(TIPOS_LABEL[comp.tipo] || comp.tipo);
     const fecha  = new Date(comp.fecha).toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric' });
     const aplicaIgv = comp.igv && comp.igv > 0;
 
@@ -56,7 +111,7 @@ router.get('/:id', async (req, res) => {
     const condicionHtml = `
       <div style="margin-bottom:12px;">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#888;font-weight:700;margin-bottom:4px;">Condición de pago</div>
-        <div style="font-weight:600;">${CONDICION_LABEL[comp.condicion_pago] || comp.condicion_pago}</div>
+        <div style="font-weight:600;">${escaparHtml(CONDICION_LABEL[comp.condicion_pago] || comp.condicion_pago)}</div>
         ${comp.condicion_pago === 'credito' && comp.fecha_vencimiento
           ? `<div style="color:#555;font-size:12px;">Vence: ${new Date(comp.fecha_vencimiento).toLocaleDateString('es-PE')}</div>`
           : ''}
@@ -65,13 +120,13 @@ router.get('/:id', async (req, res) => {
     // Bloque referencia (notas de crédito / devolución)
     let referenciaHtml = '';
     if (comp.comprobante_ref_id && comp.ref_tipo) {
-      const refLabel = TIPOS_LABEL[comp.ref_tipo] || comp.ref_tipo;
-      const refNum   = `${comp.ref_serie}-${String(comp.ref_numero).padStart(6,'0')}`;
+      const refLabel = escaparHtml(TIPOS_LABEL[comp.ref_tipo] || comp.ref_tipo);
+      const refNum   = escaparHtml(`${comp.ref_serie}-${String(comp.ref_numero).padStart(6,'0')}`);
       referenciaHtml = `
         <div style="background:#f8f9ff;border:1px solid #e0e8ff;border-radius:8px;padding:12px;margin-bottom:14px;">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#888;font-weight:700;margin-bottom:4px;">Comprobante referenciado</div>
           <div style="font-weight:600;">${refLabel} ${refNum}</div>
-          ${comp.motivo_ref ? `<div style="color:#555;font-size:12px;margin-top:2px;">Motivo: ${comp.motivo_ref}</div>` : ''}
+          ${comp.motivo_ref ? `<div style="color:#555;font-size:12px;margin-top:2px;">Motivo: ${escaparHtml(comp.motivo_ref)}</div>` : ''}
         </div>`;
     }
 
@@ -82,9 +137,9 @@ router.get('/:id', async (req, res) => {
         <div style="background:#f8f9ff;border:1px solid #e0e8ff;border-radius:8px;padding:12px;margin-bottom:14px;">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:#888;font-weight:700;margin-bottom:6px;">Datos del traslado</div>
           <div style="line-height:1.8;color:#333;">
-            ${comp.direccion_partida ? `<strong>Partida:</strong> ${comp.direccion_partida}<br>` : ''}
-            ${comp.direccion_llegada ? `<strong>Llegada:</strong> ${comp.direccion_llegada}<br>` : ''}
-            ${comp.transportista     ? `<strong>Transportista:</strong> ${comp.transportista}<br>` : ''}
+            ${comp.direccion_partida ? `<strong>Partida:</strong> ${escaparHtml(comp.direccion_partida)}<br>` : ''}
+            ${comp.direccion_llegada ? `<strong>Llegada:</strong> ${escaparHtml(comp.direccion_llegada)}<br>` : ''}
+            ${comp.transportista     ? `<strong>Transportista:</strong> ${escaparHtml(comp.transportista)}<br>` : ''}
             ${comp.fecha_traslado    ? `<strong>Fecha:</strong> ${new Date(comp.fecha_traslado).toLocaleDateString('es-PE')}` : ''}
           </div>
         </div>`;
@@ -132,20 +187,20 @@ router.get('/:id', async (req, res) => {
           </div>
         </div>
         <div class="num">
-          <div class="serie">${num}</div>
+          <div class="serie">${numHtml}</div>
           <div class="fecha">${fecha}</div>
-          <span class="estado" style="background:${ec.bg};color:${ec.fg};">${comp.estado.toUpperCase()}</span>
+          <span class="estado" style="background:${ec.bg};color:${ec.fg};">${escaparHtml(comp.estado.toUpperCase())}</span>
         </div>
       </div>
 
       <div class="cliente-bloque">
         <div class="label-sec">Cliente</div>
-        <div class="cliente-nombre">${comp.cliente_nombre}</div>
+        <div class="cliente-nombre">${escaparHtml(comp.cliente_nombre)}</div>
         <div class="cliente-info">
-          ${comp.cliente_documento ? `${comp.tipo_documento || 'Doc'}: ${comp.cliente_documento}<br>` : ''}
-          ${comp.cliente_direccion ? `${comp.cliente_direccion}<br>` : ''}
-          ${comp.cliente_email     ? `${comp.cliente_email}<br>` : ''}
-          ${comp.cliente_telefono  ? `Tel: ${comp.cliente_telefono}` : ''}
+          ${comp.cliente_documento ? `${escaparHtml(comp.tipo_documento || 'Doc')}: ${escaparHtml(comp.cliente_documento)}<br>` : ''}
+          ${comp.cliente_direccion ? `${escaparHtml(comp.cliente_direccion)}<br>` : ''}
+          ${comp.cliente_email     ? `${escaparHtml(comp.cliente_email)}<br>` : ''}
+          ${comp.cliente_telefono  ? `Tel: ${escaparHtml(comp.cliente_telefono)}` : ''}
         </div>
       </div>
 
@@ -167,8 +222,8 @@ router.get('/:id', async (req, res) => {
           ${detalle.map((d, i) => `
             <tr>
               <td style="color:#888">${i + 1}</td>
-              <td><strong>${d.producto_nombre || d.descripcion_libre || '—'}</strong></td>
-              <td>${d.cantidad} ${d.unidad && d.unidad !== 'UND' ? d.unidad : ''}</td>
+              <td><strong>${escaparHtml(d.producto_nombre || d.descripcion_libre || '—')}</strong></td>
+              <td>${d.cantidad} ${d.unidad && d.unidad !== 'UND' ? escaparHtml(d.unidad) : ''}</td>
               <td style="text-align:right">S/ ${d.precio_unitario.toFixed(2)}</td>
               <td style="text-align:right"><strong>S/ ${d.subtotal.toFixed(2)}</strong></td>
             </tr>`).join('')}
@@ -188,17 +243,15 @@ router.get('/:id', async (req, res) => {
     </body>
     </html>`;
 
-    const pdfBuffer = await htmlPdf.generatePdf({ content: html }, {
-      format: 'A4',
-      margin: { top:'10mm', bottom:'10mm', left:'10mm', right:'10mm' }
-    });
+    const pdfBuffer = await generarPdf(html);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${num}.pdf"`);
+    const filename = num.replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
     res.send(pdfBuffer);
 
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 

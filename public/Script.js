@@ -1,4 +1,4 @@
-const API = 'http://localhost:3000/api';
+const API = '/api';
 
 // Helper: todas las llamadas a la API deben enviar la cookie de sesión
 function apiFetch(url, options = {}) {
@@ -311,9 +311,14 @@ function seleccionarTipo(tipo) {
 }
 
 function aplicarFiltroTipo() {
-  const q = (document.getElementById('buscar-factura').value || '').toLowerCase();
+  const q = (document.getElementById('buscar-factura').value || '').trim().toLocaleLowerCase('es');
+  const documentoQuery = q.replace(/\D/g, '');
   let lista = tipoActivo === 'todos' ? facturasData : facturasData.filter(f => f.tipo === tipoActivo);
-  if (q) lista = lista.filter(f => f.cliente_nombre.toLowerCase().includes(q));
+  if (q) lista = lista.filter(f => {
+    const nombre = (f.cliente_nombre || '').toLocaleLowerCase('es');
+    const documento = String(f.cliente_documento || '').replace(/\D/g, '');
+    return nombre.includes(q) || (documentoQuery && documento.includes(documentoQuery));
+  });
   document.getElementById('comprobantes-titulo').textContent = tipoActivo === 'todos'
     ? 'Todos los comprobantes'
     : TIPOS_COMPROBANTE[tipoActivo].label + 's';
@@ -541,6 +546,9 @@ async function verFactura(id) {
   facturaIdActual = id;
   const r = await apiFetch(`${API}/comprobantes/${id}`);
   const d = await r.json();
+  if (!r.ok || !d.ok || !d.data) {
+    return toast(d.error || 'No se pudo cargar el comprobante', 'error');
+  }
   const f = d.data;
   const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#4f8ef7' };
   const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;

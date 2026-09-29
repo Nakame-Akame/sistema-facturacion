@@ -4,9 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FacturaPro — Sistema de Facturación</title>
+<meta name="theme-color" content="#18312b">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
   :root {
     --bg:        #0f1117;
     --surface:   #181c27;
@@ -210,6 +212,32 @@
   .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .sales-page-head { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+  .sales-layout { display:grid; grid-template-columns:minmax(0,1.45fr) minmax(310px,.85fr); gap:16px; align-items:start; }
+  .sales-catalog { min-width:0; }
+  .sales-checkout { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px; position:sticky; top:88px; }
+  .sales-checkout h2 { font-size:16px; margin-bottom:4px; }
+  .sales-subtitle { color:var(--muted); font-size:12px; }
+  .sales-type-switch { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin:16px 0; }
+  .sales-type-button { border:0; border-radius:5px; background:transparent; color:var(--muted); padding:9px 10px; cursor:pointer; font:inherit; font-size:13px; }
+  .sales-type-button.active { background:var(--card); color:var(--text); box-shadow:0 1px 4px rgba(0,0,0,.18); }
+  .sales-field { display:flex; flex-direction:column; gap:6px; margin:12px 0; }
+  .sales-client-search { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end; }
+  .sales-client-search input, .sales-field select { width:100%; }
+  .sales-stock { color:var(--muted); font-size:11px; }
+  .sales-add-controls { display:flex; align-items:center; gap:6px; }
+  .sales-quantity { width:72px; min-width:0; padding:6px 7px; }
+  .sales-cart-list { display:grid; gap:8px; margin:12px 0; max-height:260px; overflow:auto; }
+  .sales-cart-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:center; padding-bottom:8px; border-bottom:1px solid var(--border); }
+  .sales-cart-name { font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+  .sales-cart-meta { color:var(--muted); font-size:11px; margin-top:2px; }
+  .sales-summary { border-top:1px solid var(--border); padding-top:10px; }
+  .sales-summary .total-row.final { color:var(--accent2); }
+  .sales-submit { width:100%; justify-content:center; margin-top:14px; }
+  @media (max-width: 1050px) { .sales-layout { grid-template-columns:minmax(0,1fr) minmax(280px,.8fr); } }
+  @media (max-width: 820px) { .sales-layout { grid-template-columns:1fr; } .sales-checkout { position:static; } }
+  @media (max-width: 560px) { .sales-page-head { align-items:flex-start; flex-direction:column; } .sales-client-search { grid-template-columns:1fr; } }
+
   /* LOGIN */
   #login-screen {
     display: flex; position: fixed; inset: 0; z-index: 9999;
@@ -269,28 +297,28 @@
   .dropdown-item:hover { background: rgba(79,142,247,0.08); }
   .dropdown-item .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 </style>
+<link rel="stylesheet" href="/Style.css">
 </head>
 <body>
 
 <!-- ===== PANTALLA DE LOGIN ===== -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">⚡</div>
+    <div class="login-logo" aria-hidden="true">F</div>
     <h1>FacturaPro</h1>
-    <p class="sub">Inicia sesión para continuar</p>
+    <p class="sub">Accede a tu espacio de trabajo</p>
     <div class="login-form">
       <div id="login-error"></div>
       <div>
-        <label>Email</label>
-        <input type="email" id="login-email" placeholder="admin@facturapro.com" onkeydown="if(event.key==='Enter')hacerLogin()">
+        <label for="login-email">Correo electrónico</label>
+        <input type="email" id="login-email" autocomplete="username" placeholder="nombre@empresa.com" onkeydown="if(event.key==='Enter')hacerLogin()">
       </div>
       <div>
-        <label>Contraseña</label>
-        <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')hacerLogin()">
+        <label for="login-pass">Contraseña</label>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="Ingresa tu contraseña" onkeydown="if(event.key==='Enter')hacerLogin()">
       </div>
       <button class="login-btn" id="login-btn" onclick="hacerLogin()">Iniciar sesión</button>
     </div>
-    <p class="login-hint">Por defecto: admin@facturapro.com / admin123</p>
   </div>
 </div>
 
@@ -301,11 +329,12 @@
 <aside class="sidebar">
 
   <div class="sidebar-logo">
-    <span>⚡ FacturaPro</span>
-    <small>Sistema de Facturación</small>
+    <div class="brand-line"><span class="brand-mark">F</span><span class="brand-name">FacturaPro</span></div>
+    <small>Gestión comercial</small>
   </div>
-  <nav class="nav">
+  <nav class="nav" aria-label="Navegación principal">
     <button class="nav-item active" onclick="goTo('dashboard')"><span class="icon">📊</span> Dashboard</button>
+    <button class="nav-item" onclick="goTo('ventas')"><span class="icon">🛒</span> Ventas</button>
     <button class="nav-item" onclick="goTo('facturas')"><span class="icon">🧾</span> Comprobantes</button>
     <button class="nav-item" onclick="goTo('clientes')"><span class="icon">👥</span> Clientes</button>
     <button class="nav-item" onclick="goTo('productos')"><span class="icon">📦</span> Productos</button>
@@ -320,21 +349,29 @@
 <main class="main">
 
   <!-- TOPBAR -->
-  <div class="topbar">
-    <h1 id="page-title">Dashboard</h1>
+  <header class="topbar">
+    <div class="topbar-copy">
+      <p class="topbar-kicker"><span>/</span> OPERACIONES</p>
+      <h1 id="page-title">Dashboard</h1>
+    </div>
     <div class="topbar-right">
-      <span id="fecha-top" style="font-size:12px;color:var(--muted)"></span>
+      <span id="fecha-top" class="topbar-date"></span>
+      <button class="btn btn-primary btn-new" onclick="goTo('ventas')"><span class="btn-plus">+</span><span class="btn-label">Nueva venta</span></button>
       <div class="user-pill" id="user-pill" style="display:none;">
         <div class="avatar" id="user-avatar">A</div>
         <span id="user-nombre"></span>
         <span class="role-badge" id="user-rol"></span>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="cerrarSesion()">🚪 Salir</button>
+      <button class="btn btn-ghost btn-sm btn-logout" onclick="cerrarSesion()"><span aria-hidden="true">↪</span><span class="btn-label">Salir</span></button>
     </div>
-  </div>
+  </header>
 
   <!-- ===== DASHBOARD ===== -->
   <div class="page active" id="page-dashboard">
+    <div class="page-intro">
+      <div><p class="eyebrow">RESUMEN COMERCIAL</p><h2>Tu operación, de un vistazo</h2></div>
+      <span class="period-chip"><span class="status-dot"></span> Actividad del mes</span>
+    </div>
     <div class="stats-grid">
       <div class="stat-card blue">
         <div class="stat-label">Ventas hoy</div>
@@ -373,7 +410,7 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="dashboard-grid">
       <div class="table-card">
         <div class="table-header"><h2>🏆 Top Productos</h2></div>
         <table>
@@ -394,7 +431,7 @@
       </div>
     </div>
 
-    <div class="table-card" style="margin-top:20px;">
+    <div class="table-card panel-spacing">
       <div class="table-header"><h2>💳 Créditos pendientes</h2></div>
       <table>
         <thead><tr><th>Comprobante</th><th>Cliente</th><th>Vencimiento</th><th>Monto</th><th>Estado</th></tr></thead>
@@ -402,6 +439,72 @@
           <tr><td colspan="5"><div class="empty"><p>Sin créditos pendientes</p></div></td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- ===== VENTAS ===== -->
+  <div class="page" id="page-ventas">
+    <div class="sales-page-head">
+      <div><p class="eyebrow">VENTA DIRECTA</p><h2>Productos y emisión</h2></div>
+      <button class="btn btn-ghost" onclick="goTo('facturas')">Ver comprobantes</button>
+    </div>
+    <div class="sales-layout">
+      <section class="table-card sales-catalog">
+        <div class="table-header">
+          <div><h2>Catálogo</h2><p class="sales-subtitle">Busca por producto o categoría y agrégalo a la venta.</p></div>
+          <div class="search-bar"><input type="search" id="buscar-producto-venta" placeholder="Buscar producto..." oninput="renderProductosVenta()"></div>
+        </div>
+        <div class="sales-product-grid" id="ventas-productos-body" aria-live="polite">
+          <div class="empty"><span class="icon">📦</span><p>Cargando productos...</p></div>
+        </div>
+      </section>
+
+      <section class="sales-checkout" aria-label="Detalle de venta">
+        <h2>Nueva venta</h2>
+        <p class="sales-subtitle">Selecciona cliente, comprobante y productos.</p>
+
+        <div class="sales-type-switch" role="group" aria-label="Tipo de comprobante">
+          <button class="sales-type-button active" id="venta-tipo-boleta" type="button" aria-pressed="true" onclick="seleccionarTipoVenta('boleta')">Boleta</button>
+          <button class="sales-type-button" id="venta-tipo-factura" type="button" aria-pressed="false" onclick="seleccionarTipoVenta('factura')">Factura</button>
+        </div>
+
+        <div class="sales-field">
+          <label for="buscar-cliente-venta">DNI o RUC del cliente</label>
+          <div class="sales-client-search">
+            <input type="search" id="buscar-cliente-venta" placeholder="8 dígitos DNI / 11 dígitos RUC" onkeydown="if(event.key==='Enter'){event.preventDefault();consultarClienteVenta();}">
+            <button class="btn btn-ghost" id="btn-consultar-cliente-venta" type="button" onclick="consultarClienteVenta()">Consultar</button>
+          </div>
+          <div id="resultado-cliente-venta" class="alert alert-info" role="status" aria-live="polite" style="display:none;margin:0;"></div>
+        </div>
+
+        <div class="sales-field">
+          <label for="venta-cliente">Cliente *</label>
+          <select id="venta-cliente"><option value="">-- Selecciona un cliente --</option></select>
+        </div>
+
+        <div class="sales-field">
+          <label for="venta-condicion">Condición de pago</label>
+          <select id="venta-condicion" onchange="actualizarResumenVenta()">
+            <option value="contado">Contado</option>
+            <option value="credito">Crédito</option>
+          </select>
+        </div>
+        <div class="sales-field" id="venta-grupo-vencimiento" style="display:none;">
+          <label for="venta-vencimiento">Fecha de vencimiento *</label>
+          <input type="date" id="venta-vencimiento">
+        </div>
+
+        <div class="section-title">Carrito</div>
+        <div class="sales-cart-list" id="ventas-carrito-body">
+          <p class="sales-subtitle">Aún no agregas productos.</p>
+        </div>
+        <div class="sales-summary">
+          <div class="total-row"><span style="color:var(--muted)">Subtotal</span><span class="mono" id="venta-subtotal">S/ 0.00</span></div>
+          <div class="total-row"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="venta-igv">S/ 0.00</span></div>
+          <div class="total-row final"><span>TOTAL</span><span class="mono" id="venta-total">S/ 0.00</span></div>
+        </div>
+        <button class="btn btn-success sales-submit" id="btn-emitir-venta" type="button" onclick="emitirVentaDesdePagina()">Emitir boleta</button>
+      </section>
     </div>
   </div>
 
@@ -413,13 +516,11 @@
       </div>
       <div class="table-header">
         <h2 id="comprobantes-titulo">Todos los comprobantes</h2>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <div class="search-bar"><input type="text" id="buscar-factura" placeholder="Buscar cliente..." oninput="filtrarFacturas()"></div>
+        <div class="table-tools">
+          <div class="search-bar"><input type="text" id="buscar-factura" placeholder="Cliente, DNI o RUC..." oninput="filtrarFacturas()"></div>
           <div class="dropdown">
-            <button class="btn btn-primary" onclick="toggleDropdownNuevo()">+ Nuevo comprobante ▾</button>
+            <button class="btn btn-primary" onclick="toggleDropdownNuevo()">+ Otros documentos ▾</button>
             <div class="dropdown-menu" id="dropdown-nuevo">
-              <button class="dropdown-item" onclick="abrirModalFactura('boleta')"><span class="dot" style="background:#4f8ef7"></span> Boleta electrónica</button>
-              <button class="dropdown-item" onclick="abrirModalFactura('factura')"><span class="dot" style="background:#38d9a9"></span> Factura electrónica</button>
               <button class="dropdown-item" onclick="abrirModalFactura('nota_pedido')"><span class="dot" style="background:#f7c948"></span> Nota de pedido</button>
               <button class="dropdown-item" onclick="abrirModalFactura('guia_remision')"><span class="dot" style="background:#a78bfa"></span> Guía de remisión</button>
               <button class="dropdown-item" onclick="abrirModalFactura('cotizacion')"><span class="dot" style="background:#7a86a0"></span> Cotización</button>
@@ -446,7 +547,7 @@
     <div class="table-card">
       <div class="table-header">
         <h2>Clientes registrados</h2>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div class="table-tools">
           <div class="search-bar"><input type="text" id="buscar-cliente" placeholder="Buscar..." oninput="filtrarClientes()"></div>
           <button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo Cliente</button>
         </div>
@@ -465,7 +566,7 @@
     <div class="table-card">
       <div class="table-header">
         <h2>Catálogo de productos</h2>
-        <div style="display:flex;gap:10px;align-items:center;">
+        <div class="table-tools">
           <div class="search-bar"><input type="text" id="buscar-producto" placeholder="Buscar..." oninput="filtrarProductos()"></div>
           <button class="btn btn-primary" onclick="abrirModalProducto()">+ Nuevo Producto</button>
         </div>
@@ -481,7 +582,7 @@
 
   <!-- ===== REPORTES ===== -->
   <div class="page" id="page-reportes">
-    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stats-grid stats-grid-reports">
       <div class="stat-card green">
         <div class="stat-label">Base imponible del mes</div>
         <div class="stat-value green mono" id="rep-subtotal">S/ 0.00</div>
@@ -496,7 +597,7 @@
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:8px;">
+    <div class="dashboard-grid report-grid">
       <div class="table-card">
         <div class="table-header"><h2>📅 Ventas por día (30 días)</h2></div>
         <table>
@@ -513,7 +614,7 @@
       </div>
     </div>
 
-    <div style="margin-top:20px;" class="table-card">
+    <div class="table-card panel-spacing">
       <div class="table-header"><h2>📊 Estado de facturas</h2></div>
       <table>
         <thead><tr><th>Estado</th><th>Cantidad</th><th>Monto total</th></tr></thead>
@@ -573,6 +674,14 @@
 
     <div class="form-grid" style="margin-bottom:8px;">
       <div class="form-group full">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;">
+          <div class="form-group">
+            <label for="buscar-cliente-factura">Consultar DNI en RENIEC o RUC en SUNAT</label>
+            <input type="search" id="buscar-cliente-factura" placeholder="8 dígitos DNI / 11 dígitos RUC" oninput="filtrarClientesFactura()" onkeydown="if(event.key==='Enter'){event.preventDefault();consultarClienteDocumento();}" style="width:100%;">
+          </div>
+          <button class="btn btn-ghost" id="btn-consultar-documento" type="button" onclick="consultarClienteDocumento()">Consultar</button>
+        </div>
+        <div id="resultado-consulta-documento" class="alert alert-info" role="status" aria-live="polite" style="display:none;margin:8px 0 0;"></div>
         <label>Cliente *</label>
         <select id="factura-cliente"></select>
       </div>
@@ -670,7 +779,7 @@
 </div><!-- /app-shell -->
 
 <script>
-const API = 'http://localhost:3000/api';
+const API = '/api';
 
 // Helper: todas las llamadas a la API deben enviar la cookie de sesión
 function apiFetch(url, options = {}) {
@@ -679,7 +788,12 @@ function apiFetch(url, options = {}) {
 
 let facturasData = [];
 let clientesData = [];
+let clientesFacturaData = [];
 let productosData = [];
+let productosVentaData = [];
+let clientesVentaData = [];
+let carritoVenta = [];
+let tipoVentaActual = 'boleta';
 let itemsFactura = [];
 let facturaIdActual = null;
 
@@ -691,10 +805,11 @@ function goTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') === `goTo('${page}')`) n.classList.add('active');
   });
-  const titles = { dashboard: 'Dashboard', facturas: 'Comprobantes', clientes: 'Clientes', productos: 'Productos', reportes: 'Reportes' };
+  const titles = { dashboard: 'Dashboard', ventas: 'Ventas', facturas: 'Comprobantes', clientes: 'Clientes', productos: 'Productos', reportes: 'Reportes' };
   document.getElementById('page-title').textContent = titles[page] || page;
 
   if (page === 'dashboard') cargarDashboard();
+  if (page === 'ventas') cargarVentas();
   if (page === 'facturas') cargarFacturas();
   if (page === 'clientes') cargarClientes();
   if (page === 'productos') cargarProductos();
@@ -876,6 +991,332 @@ async function cargarProductos() {
   const d = await r.json();
   productosData = d.data || [];
   renderProductos(productosData);
+}
+
+async function cargarVentas() {
+  try {
+    const [respuestaClientes, respuestaProductos] = await Promise.all([
+      apiFetch(`${API}/clientes`),
+      apiFetch(`${API}/productos`),
+    ]);
+    const [clientes, productos] = await Promise.all([
+      respuestaClientes.json(),
+      respuestaProductos.json(),
+    ]);
+    if (!respuestaClientes.ok || !clientes.ok || !respuestaProductos.ok || !productos.ok) {
+      throw new Error(clientes.error || productos.error || 'No se pudieron cargar los datos de venta');
+    }
+
+    productosVentaData = productos.data || [];
+    clientesVentaData = deduplicarClientesVenta(clientes.data || []);
+    renderProductosVenta();
+    renderClientesVenta();
+    renderCarritoVenta();
+  } catch (error) {
+    toast(error.message || 'No se pudieron cargar los datos de venta', 'error');
+  }
+}
+
+function renderProductosVenta() {
+  const catalogo = document.getElementById('ventas-productos-body');
+  const query = (document.getElementById('buscar-producto-venta').value || '').trim().toLocaleLowerCase('es');
+  const productos = productosVentaData.filter(producto =>
+    `${producto.nombre || ''} ${producto.categoria || ''} ${producto.descripcion || ''}`.toLocaleLowerCase('es').includes(query)
+  );
+  catalogo.replaceChildren();
+
+  if (productos.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.innerHTML = '<span class="icon">📦</span><p>Sin productos coincidentes</p>';
+    catalogo.appendChild(empty);
+    return;
+  }
+
+  productos.forEach(producto => {
+    const card = document.createElement('article');
+    card.className = 'sales-product-card';
+    const top = document.createElement('div');
+    top.className = 'sales-product-top';
+    const name = document.createElement('div');
+    name.className = 'sales-product-name';
+    const productName = document.createElement('strong');
+    productName.textContent = producto.nombre;
+    const details = document.createElement('small');
+    details.className = 'sales-product-description';
+    details.textContent = producto.descripcion || 'Producto del catálogo';
+    name.append(productName, details);
+    top.appendChild(name);
+    if (producto.categoria) {
+      const category = document.createElement('span');
+      category.className = 'badge badge-blue sales-product-category';
+      category.textContent = producto.categoria;
+      top.appendChild(category);
+    }
+
+    const bottom = document.createElement('div');
+    bottom.className = 'sales-product-bottom';
+    const productInfo = document.createElement('div');
+    const price = document.createElement('div');
+    price.className = 'sales-product-price';
+    price.textContent = `S/ ${Number(producto.precio).toFixed(2)}`;
+    const stock = document.createElement('div');
+    stock.className = `sales-product-availability${Number(producto.stock) <= 5 ? ' low' : ''}`;
+    stock.textContent = Number(producto.stock) > 0 ? `Disponible: ${producto.stock}` : 'Sin stock';
+    productInfo.append(price, stock);
+
+    const controls = document.createElement('div');
+    controls.className = 'sales-add-controls';
+    const quantity = document.createElement('input');
+    quantity.type = 'number';
+    quantity.id = `venta-cantidad-${producto.id}`;
+    quantity.className = 'sales-quantity';
+    quantity.min = '0.000001';
+    quantity.max = String(producto.stock);
+    quantity.step = '0.000001';
+    quantity.value = '1';
+    quantity.setAttribute('aria-label', `Cantidad de ${producto.nombre}`);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'btn btn-success btn-sm';
+    add.textContent = '+';
+    add.title = 'Agregar al carrito';
+    add.setAttribute('aria-label', `Agregar ${producto.nombre} al carrito`);
+    add.disabled = Number(producto.stock) <= 0;
+    add.addEventListener('click', () => agregarProductoAVenta(producto.id));
+    controls.append(quantity, add);
+    bottom.append(productInfo, controls);
+    card.append(top, bottom);
+    catalogo.appendChild(card);
+  });
+}
+
+function deduplicarClientesVenta(clientes) {
+  const unicos = new Map();
+  clientes.forEach(cliente => {
+    const documento = String(cliente.documento || '').replace(/\D/g, '');
+    const clave = documento ? `${cliente.tipo_documento || ''}:${documento}` : `id:${cliente.id}`;
+    if (!unicos.has(clave)) unicos.set(clave, cliente);
+  });
+  return [...unicos.values()];
+}
+
+function agregarProductoAVenta(productoId) {
+  const producto = productosVentaData.find(item => item.id === productoId);
+  const cantidad = Number(document.getElementById(`venta-cantidad-${productoId}`).value);
+  if (!producto || !Number.isFinite(cantidad) || cantidad <= 0) {
+    return toast('Indica una cantidad válida', 'error');
+  }
+
+  const existente = carritoVenta.find(item => item.producto_id === productoId);
+  if (cantidad + (existente?.cantidad || 0) > Number(producto.stock)) {
+    return toast(`Stock insuficiente. Disponible: ${producto.stock}`, 'error');
+  }
+  if (existente) existente.cantidad += cantidad;
+  else carritoVenta.push({ producto_id: producto.id, nombre: producto.nombre, precio: Number(producto.precio), cantidad });
+  renderCarritoVenta();
+}
+
+function quitarProductoVenta(index) {
+  carritoVenta.splice(index, 1);
+  renderCarritoVenta();
+}
+
+function renderCarritoVenta() {
+  const container = document.getElementById('ventas-carrito-body');
+  container.replaceChildren();
+  if (carritoVenta.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'sales-subtitle';
+    empty.textContent = 'Aún no agregas productos.';
+    container.appendChild(empty);
+  } else {
+    carritoVenta.forEach((item, index) => {
+      const row = document.createElement('div');
+      row.className = 'sales-cart-row';
+      const info = document.createElement('div');
+      const name = document.createElement('div');
+      name.className = 'sales-cart-name';
+      name.textContent = item.nombre;
+      const meta = document.createElement('div');
+      meta.className = 'sales-cart-meta';
+      meta.textContent = `${item.cantidad} × S/ ${item.precio.toFixed(2)}`;
+      info.append(name, meta);
+
+      const action = document.createElement('div');
+      action.className = 'sales-add-controls';
+      const subtotal = document.createElement('strong');
+      subtotal.className = 'mono';
+      subtotal.textContent = `S/ ${(item.cantidad * item.precio).toFixed(2)}`;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn btn-danger btn-sm';
+      remove.textContent = '×';
+      remove.title = 'Quitar producto';
+      remove.setAttribute('aria-label', `Quitar ${item.nombre}`);
+      remove.addEventListener('click', () => quitarProductoVenta(index));
+      action.append(subtotal, remove);
+      row.append(info, action);
+      container.appendChild(row);
+    });
+  }
+  actualizarResumenVenta();
+}
+
+function actualizarResumenVenta() {
+  const subtotalCentimos = carritoVenta.reduce((total, item) => total + Math.round(item.precio * item.cantidad * 100), 0);
+  const igvCentimos = Math.round(subtotalCentimos * 18 / 100);
+  document.getElementById('venta-subtotal').textContent = `S/ ${(subtotalCentimos / 100).toFixed(2)}`;
+  document.getElementById('venta-igv').textContent = `S/ ${(igvCentimos / 100).toFixed(2)}`;
+  document.getElementById('venta-total').textContent = `S/ ${((subtotalCentimos + igvCentimos) / 100).toFixed(2)}`;
+  document.getElementById('venta-grupo-vencimiento').style.display =
+    document.getElementById('venta-condicion').value === 'credito' ? 'flex' : 'none';
+}
+
+function seleccionarTipoVenta(tipo) {
+  tipoVentaActual = tipo;
+  const esBoleta = tipo === 'boleta';
+  document.getElementById('venta-tipo-boleta').classList.toggle('active', esBoleta);
+  document.getElementById('venta-tipo-boleta').setAttribute('aria-pressed', String(esBoleta));
+  document.getElementById('venta-tipo-factura').classList.toggle('active', !esBoleta);
+  document.getElementById('venta-tipo-factura').setAttribute('aria-pressed', String(!esBoleta));
+  document.getElementById('btn-emitir-venta').textContent = `Emitir ${esBoleta ? 'boleta' : 'factura'}`;
+}
+
+function renderClientesVenta() {
+  const select = document.getElementById('venta-cliente');
+  const seleccionado = select.value;
+  select.replaceChildren(new Option('-- Selecciona un cliente --', ''));
+  clientesVentaData.forEach(cliente => {
+    select.add(new Option(`${cliente.nombre} (${cliente.documento || 'S/D'})`, cliente.id));
+  });
+  if (clientesVentaData.some(cliente => String(cliente.id) === seleccionado)) select.value = seleccionado;
+}
+
+function mostrarAvisoClienteVenta(mensaje, tipo = 'info') {
+  const aviso = document.getElementById('resultado-cliente-venta');
+  aviso.className = `alert alert-${tipo}`;
+  aviso.textContent = mensaje;
+  aviso.style.display = 'block';
+}
+
+async function consultarClienteVenta() {
+  const input = document.getElementById('buscar-cliente-venta');
+  const boton = document.getElementById('btn-consultar-cliente-venta');
+  const documento = input.value.replace(/\D/g, '');
+  if (![8, 11].includes(documento.length)) {
+    return mostrarAvisoClienteVenta('Ingresa un DNI de 8 dígitos o un RUC de 11 dígitos.', 'warn');
+  }
+
+  boton.disabled = true;
+  mostrarAvisoClienteVenta('Consultando identidad...', 'info');
+  try {
+    const response = await apiFetch(`${API}/clientes/consultar-documento/${documento}`);
+    const result = await response.json();
+    if (!response.ok || !result.ok || !result.data) {
+      return mostrarAvisoClienteVenta(result.error || 'No se pudo consultar el documento.', 'danger');
+    }
+
+    const identity = result.data;
+    input.value = identity.documento;
+    const existente = clientesVentaData.find(cliente => String(cliente.documento || '').replace(/\D/g, '') === identity.documento);
+    if (existente) {
+      document.getElementById('venta-cliente').value = String(existente.id);
+      return mostrarAvisoClienteVenta(`Verificado: ${identity.nombre}. Cliente seleccionado.`, 'info');
+    }
+
+    const aviso = document.getElementById('resultado-cliente-venta');
+    aviso.className = 'alert alert-info';
+    aviso.replaceChildren();
+    aviso.style.display = 'flex';
+    aviso.style.alignItems = 'center';
+    aviso.style.justifyContent = 'space-between';
+    aviso.style.gap = '10px';
+    const detalle = document.createElement('span');
+    detalle.textContent = `Verificado: ${identity.nombre} (${identity.documento}).`;
+    const registrar = document.createElement('button');
+    registrar.type = 'button';
+    registrar.className = 'btn btn-success btn-sm';
+    registrar.textContent = 'Registrar';
+    registrar.addEventListener('click', () => registrarClienteVenta(identity, registrar));
+    aviso.append(detalle, registrar);
+  } catch {
+    mostrarAvisoClienteVenta('No se pudo conectar con el servicio de consulta.', 'danger');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+async function registrarClienteVenta(identity, boton) {
+  boton.disabled = true;
+  try {
+    const response = await apiFetch(`${API}/clientes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: identity.nombre,
+        documento: identity.documento,
+        tipo_documento: identity.tipo_documento,
+        direccion: identity.direccion,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      return mostrarAvisoClienteVenta(result.error || 'No se pudo registrar el cliente.', 'danger');
+    }
+
+    clientesVentaData = deduplicarClientesVenta([...clientesVentaData, { id: result.id, ...identity }]);
+    renderClientesVenta();
+    document.getElementById('venta-cliente').value = String(result.id);
+    mostrarAvisoClienteVenta('Cliente registrado y seleccionado.', 'info');
+  } catch {
+    mostrarAvisoClienteVenta('No se pudo registrar el cliente.', 'danger');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+async function emitirVentaDesdePagina() {
+  const clienteId = Number(document.getElementById('venta-cliente').value);
+  const condicionPago = document.getElementById('venta-condicion').value;
+  const fechaVencimiento = condicionPago === 'credito'
+    ? document.getElementById('venta-vencimiento').value
+    : null;
+  if (!clienteId) return toast('Selecciona un cliente', 'error');
+  if (carritoVenta.length === 0) return toast('Agrega al menos un producto', 'error');
+  if (condicionPago === 'credito' && !fechaVencimiento) return toast('Indica la fecha de vencimiento', 'error');
+
+  const boton = document.getElementById('btn-emitir-venta');
+  boton.disabled = true;
+  try {
+    const response = await apiFetch(`${API}/comprobantes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: tipoVentaActual,
+        cliente_id: clienteId,
+        condicion_pago: condicionPago,
+        fecha_vencimiento: fechaVencimiento,
+        items: carritoVenta.map(item => ({ producto_id: item.producto_id, cantidad: item.cantidad })),
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) return toast(result.error || 'No se pudo emitir la venta', 'error');
+
+    toast(`${tipoVentaActual === 'boleta' ? 'Boleta' : 'Factura'} ${result.numero} emitida por S/ ${result.total.toFixed(2)}`);
+    carritoVenta = [];
+    document.getElementById('venta-cliente').value = '';
+    document.getElementById('buscar-cliente-venta').value = '';
+    document.getElementById('resultado-cliente-venta').style.display = 'none';
+    document.getElementById('venta-condicion').value = 'contado';
+    document.getElementById('venta-vencimiento').value = '';
+    seleccionarTipoVenta('boleta');
+    await Promise.all([cargarVentas(), cargarFacturas()]);
+  } catch {
+    toast('No se pudo conectar con el servidor', 'error');
+  } finally {
+    boton.disabled = false;
+  }
 }
 
 function renderProductos(lista) {
@@ -1076,6 +1517,127 @@ const CONFIG_TIPO = {
   nota_credito_b:  { afecta_igv: true,  necesita_ref: true,   es_guia: false, condicion_default: 'no_afecta' },
 };
 
+function filtrarClientesFactura() {
+  const consulta = document.getElementById('buscar-cliente-factura').value
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('es');
+  const consultaDocumento = consulta.replace(/\D/g, '');
+  const select = document.getElementById('factura-cliente');
+  const coincidencias = clientesFacturaData.filter(cliente => {
+    const nombre = String(cliente.nombre || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es');
+    const documento = String(cliente.documento || '').replace(/\D/g, '');
+    return nombre.includes(consulta) || (consultaDocumento && documento.includes(consultaDocumento));
+  });
+
+  select.innerHTML = '<option value="">-- Selecciona un cliente --</option>';
+  if (coincidencias.length === 0) {
+    select.innerHTML += '<option value="" disabled>Sin clientes coincidentes</option>';
+    return;
+  }
+
+  coincidencias.forEach(cliente => {
+    const option = document.createElement('option');
+    option.value = cliente.id;
+    option.textContent = `${cliente.nombre} (${cliente.documento || 'S/D'})`;
+    select.appendChild(option);
+  });
+}
+
+function mostrarResultadoConsultaDocumento(mensaje, tipo = 'info') {
+  const resultado = document.getElementById('resultado-consulta-documento');
+  resultado.className = `alert alert-${tipo}`;
+  resultado.textContent = mensaje;
+  resultado.style.display = 'block';
+}
+
+async function consultarClienteDocumento() {
+  const campo = document.getElementById('buscar-cliente-factura');
+  const boton = document.getElementById('btn-consultar-documento');
+  const documento = campo.value.replace(/\D/g, '');
+  if (![8, 11].includes(documento.length)) {
+    mostrarResultadoConsultaDocumento('Ingresa un DNI de 8 dígitos o un RUC de 11 dígitos.', 'warn');
+    return;
+  }
+
+  boton.disabled = true;
+  mostrarResultadoConsultaDocumento('Consultando el documento...', 'info');
+  try {
+    const response = await apiFetch(`${API}/clientes/consultar-documento/${documento}`);
+    const result = await response.json();
+    if (!response.ok || !result.ok || !result.data) {
+      mostrarResultadoConsultaDocumento(result.error || 'No se pudo consultar el documento.', 'danger');
+      return;
+    }
+
+    const identity = result.data;
+    const cliente = clientesFacturaData.find(item => String(item.documento || '').replace(/\D/g, '') === identity.documento);
+    campo.value = identity.documento;
+    filtrarClientesFactura();
+
+    if (cliente) {
+      document.getElementById('factura-cliente').value = String(cliente.id);
+      mostrarResultadoConsultaDocumento(`Verificado en ${identity.tipo_documento === 'DNI' ? 'RENIEC' : 'SUNAT'}: ${identity.nombre}. Cliente local seleccionado.`, 'info');
+      return;
+    }
+
+    const resultado = document.getElementById('resultado-consulta-documento');
+    resultado.replaceChildren();
+    resultado.className = 'alert alert-info';
+    resultado.style.display = 'flex';
+    resultado.style.alignItems = 'center';
+    resultado.style.justifyContent = 'space-between';
+    resultado.style.gap = '12px';
+    const detalle = document.createElement('span');
+    detalle.textContent = `Verificado en ${identity.tipo_documento === 'DNI' ? 'RENIEC' : 'SUNAT'}: ${identity.nombre} (${identity.documento}).`;
+    const registrar = document.createElement('button');
+    registrar.className = 'btn btn-success btn-sm';
+    registrar.type = 'button';
+    registrar.textContent = 'Registrar y seleccionar';
+    registrar.addEventListener('click', () => registrarClienteConsultado(identity, registrar));
+    resultado.append(detalle, registrar);
+  } catch {
+    mostrarResultadoConsultaDocumento('No se pudo conectar con el servicio de consulta.', 'danger');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+async function registrarClienteConsultado(identity, boton) {
+  boton.disabled = true;
+  try {
+    const response = await apiFetch(`${API}/clientes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: identity.nombre,
+        documento: identity.documento,
+        tipo_documento: identity.tipo_documento,
+        direccion: identity.direccion,
+      }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      mostrarResultadoConsultaDocumento(result.error || 'No se pudo registrar el cliente.', 'danger');
+      return;
+    }
+
+    const cliente = { id: result.id, ...identity };
+    clientesFacturaData.push(cliente);
+    filtrarClientesFactura();
+    document.getElementById('factura-cliente').value = String(cliente.id);
+    mostrarResultadoConsultaDocumento(`Cliente ${identity.nombre} registrado y seleccionado.`, 'info');
+  } catch {
+    mostrarResultadoConsultaDocumento('No se pudo registrar el cliente.', 'danger');
+  } finally {
+    boton.disabled = false;
+  }
+}
+
 async function abrirModalFactura(tipoPreseleccionado) {
   document.getElementById('dropdown-nuevo').classList.remove('open');
   const tipo = tipoPreseleccionado || 'boleta';
@@ -1102,11 +1664,12 @@ async function abrirModalFactura(tipoPreseleccionado) {
   // Cargar clientes
   const rc = await apiFetch(`${API}/clientes`);
   const dc = await rc.json();
-  const selCli = document.getElementById('factura-cliente');
-  selCli.innerHTML = '<option value="">-- Selecciona un cliente --</option>';
-  (dc.data || []).forEach(c => {
-    selCli.innerHTML += `<option value="${c.id}">${c.nombre} (${c.documento||'S/D'})</option>`;
-  });
+  clientesFacturaData = dc.data || [];
+  document.getElementById('buscar-cliente-factura').value = '';
+  const resultadoConsulta = document.getElementById('resultado-consulta-documento');
+  resultadoConsulta.style.display = 'none';
+  resultadoConsulta.replaceChildren();
+  filtrarClientesFactura();
 
   // Cargar productos
   const rp = await apiFetch(`${API}/productos`);

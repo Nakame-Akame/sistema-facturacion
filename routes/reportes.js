@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const { requierePermiso } = require('../middleware/permisos');
+
+router.use(requierePermiso('reportes:ver'));
 
 // Tipos que representan una VENTA real (afectan ingresos)
 const TIPOS_VENTA = ['factura', 'boleta'];
@@ -62,7 +65,7 @@ router.get('/resumen', (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -84,7 +87,7 @@ router.get('/ventas-por-dia', (req, res) => {
     `).all();
     res.json({ ok: true, data: ventas });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -106,7 +109,7 @@ router.get('/ventas-por-mes', (req, res) => {
     `).all();
     res.json({ ok: true, data: ventas });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -131,7 +134,7 @@ router.get('/productos-mas-vendidos', (req, res) => {
     `).all();
     res.json({ ok: true, data: productos });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -155,7 +158,7 @@ router.get('/mejores-clientes', (req, res) => {
     `).all();
     res.json({ ok: true, data: clientes });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -177,7 +180,7 @@ router.get('/ventas-por-categoria', (req, res) => {
     `).all();
     res.json({ ok: true, data: categorias });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -195,7 +198,7 @@ router.get('/facturas-por-estado', (req, res) => {
     `).all();
     res.json({ ok: true, data: estados });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -217,7 +220,7 @@ router.get('/igv-mes', (req, res) => {
     `).get();
     res.json({ ok: true, data: igv || { mes: null, facturas: 0, base_imponible: 0, igv_total: 0, total_con_igv: 0 } });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -232,7 +235,7 @@ router.get('/comprobantes-por-tipo', (req, res) => {
     `).all();
     res.json({ ok: true, data });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -252,7 +255,7 @@ router.get('/creditos-pendientes', (req, res) => {
     `).all();
     res.json({ ok: true, data });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 
@@ -307,7 +310,7 @@ router.get('/rango', (req, res) => {
       top_productos: productosTop
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: 'Error interno del servidor' });
   }
 });
 

@@ -1,0 +1,146 @@
+# Sistema de comprobantes
+
+## Requisitos
+
+- Node.js 24 o una versión LTS compatible.
+- npm.
+
+## Instalación
+
+```powershell
+npm install
+Copy-Item .env.example .env
+```
+
+Si npm 11 informa que el script de instalación de `better-sqlite3` está pendiente de aprobación, revisa y autoriza ese paquete con `npm approve-scripts better-sqlite3` y ejecuta `npm rebuild better-sqlite3`. Es el binding nativo que necesita SQLite; no apruebes scripts de otros paquetes sin revisarlos.
+
+Genera un secreto de sesión y colócalo en `SESSION_SECRET` dentro de `.env`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+El servidor se niega a iniciar si `SESSION_SECRET` está vacío.
+
+Configura los valores de `.env` según el entorno:
+
+| Variable | Uso | Valor predeterminado |
+| --- | --- | --- |
+| `PORT` | Puerto HTTP | `3000` |
+| `NODE_ENV` | Entorno de ejecución | `development` |
+| `SESSION_SECRET` | Firma de cookies de sesión; obligatorio | Sin valor |
+| `DB_PATH` | Archivo SQLite; puede ser una ruta absoluta o relativa al proyecto | `facturacion.db` |
+| `LOGIN_RATE_LIMIT` | Intentos de login por ventana | `5` |
+| `BACKUP_DIR` | Directorio para respaldos; puede ser absoluto o relativo al proyecto | `backups` |
+| `CORS_ORIGIN` | Orígenes externos autorizados separados por coma; déjalo vacío para mismo origen | Vacío |
+| `CHROME_EXECUTABLE_PATH` | Ruta de Chrome/Chromium local para generar PDF | Detección automática |
+| `DECOLECTA_API_TOKEN` | Token Bearer para consultar DNI/RUC desde el servidor | Sin valor |
+
+No copies secretos reales a `.env.example` ni al repositorio. En producción sirve la interfaz y la API desde el mismo origen siempre que sea posible. Si la interfaz vive en otro origen, añade su origen exacto a `CORS_ORIGIN` (por ejemplo `https://ventas.ejemplo.com`).
+
+## Generación de PDF
+
+En Windows se detecta Chrome en las rutas habituales. Si está instalado en otra ubicación, configura `CHROME_EXECUTABLE_PATH` en `.env`. En Linux se usa Chromium de Sparticuz.
+
+## Primer administrador
+
+```powershell
+npm run admin:create
+```
+
+El comando solicita nombre, correo y contraseña (mínimo 12 caracteres), y almacena la contraseña con bcrypt. Si ese correo ya corresponde a un administrador, permite restablecer la cuenta desde la consola. El servidor no crea usuarios ni contraseñas automáticamente.
+
+## Iniciar
+
+```powershell
+npm start
+```
+
+El servidor queda disponible en `http://localhost:3000` (o en el puerto definido por `PORT`). La ruta `GET /api/health` comprueba también que SQLite responde. El frontend usa una ruta relativa `/api`, así que no requiere cambiar código al desplegarlo detrás de otro host o puerto.
+
+## Pruebas
+
+```powershell
+npm test
+npm run typecheck
+```
+
+Las pruebas usan SQLite en memoria y no escriben en `facturacion.db`. El chequeo TypeScript está habilitado gradualmente para `services/comprobantes.js`; el servidor y las rutas continúan ejecutándose como CommonJS/JavaScript.
+
+## Reglas de comprobantes
+
+- La cantidad debe ser positiva y admite hasta 6 decimales. Cada solicitud acepta hasta 100 ítems.
+- Para líneas de producto, el precio siempre sale del catálogo; cualquier precio enviado por el navegador se ignora. Las guías pueden llevar una descripción libre sin precio.
+- Importes y descuentos se normalizan a centavos con redondeo decimal. El descuento por línea no puede exceder su precio y el descuento general no puede exceder el subtotal.
+- Devoluciones y notas de crédito requieren un comprobante de venta del mismo cliente y no pueden ajustar más unidades que las aún disponibles.
+- Emisión, reserva de serie, movimientos de stock, anulación y devolución usan transacciones SQLite. No se permite stock negativo; las anulaciones repetidas o transiciones de estado no autorizadas se rechazan.
+
+## Roles
+
+| Acción | Administrador | Vendedor |
+| --- | --- | --- |
+| Consultar clientes, productos, comprobantes, reportes y PDF | Sí | Sí |
+| Crear clientes | Sí | Sí |
+| Editar o eliminar clientes | Sí | No |
+| Crear, editar, eliminar productos o ajustar stock | Sí | No |
+| Crear factura, boleta, pedido, guía o cotización | Sí | Sí |
+| Marcar comprobantes como pagados | Sí | Sí |
+| Anular, devolver, crear notas de crédito o administrar usuarios | Sí | No |
+
+Los permisos se verifican en el servidor. La matriz de vendedor es una política inicial y debe confirmarse con el negocio antes de habilitar más acciones.
+
+## Respaldar y restaurar
+
+```powershell
+npm run db:backup
+npm run db:restore -- .\backups\facturacion-<fecha>.db
+```
+
+El respaldo se verifica con `quick_check`. Las rutas relativas de `DB_PATH` y `BACKUP_DIR` se resuelven desde el directorio del proyecto, incluso al ejecutar un comando programado desde otra carpeta. Antes de restaurar, detén el servidor; si ya existe una base en el destino, el comando conserva una copia previa junto a ella. Las pruebas automáticas verifican respaldo, restauración e integridad usando archivos temporales.
+
+### Programar respaldos
+
+Programa `npm run db:backup` diariamente con el usuario del sistema operativo que tenga acceso al proyecto y a `.env`. Por ejemplo, en Windows PowerShell, desde la carpeta del proyecto:
+
+```powershell
+$project = (Get-Location).Path
+$action = New-ScheduledTaskAction -Execute "$env:ComSpec" -Argument "/c npm run db:backup" -WorkingDirectory $project
+$trigger = New-ScheduledTaskTrigger -Daily -At 2:00AM
+Register-ScheduledTask -TaskName "SistemaFacturacionBackup" -Action $action -Trigger $trigger -Description "Respaldo diario de SQLite"
+```
+
+En Linux/macOS, agrega una entrada de `cron` con la ruta absoluta al proyecto (ajusta usuario y directorio):
+
+```cron
+0 2 * * * cd /ruta/al/proyecto && /usr/bin/npm run db:backup >> /var/log/sistema-facturacion-backup.log 2>&1
+```
+
+Comprueba periódicamente el historial/resultado de la tarea y conserva copias fuera del equipo de producción. Para ensayar recuperación: detén el servidor, restaura una copia reciente con `npm run db:restore -- <archivo>`, confirma el mensaje de éxito, inicia el servidor y verifica `GET /api/health` y los datos esperados. Haz el primer ensayo en una copia aislada, no sobre la base real.
+
+## Despliegue y operación
+
+1. Instala Node.js y npm; clona o extrae el proyecto en una carpeta persistente.
+2. Ejecuta `npm install`, crea `.env` desde `.env.example`, establece `SESSION_SECRET` y define `DB_PATH`/`BACKUP_DIR` si no usarás las rutas locales predeterminadas.
+3. Ejecuta `npm run admin:create` una sola vez para crear el administrador inicial. No incluyas la contraseña en comandos o logs.
+4. Ejecuta `npm test` y luego `npm start`. En despliegues permanentes, ejecuta Node con un supervisor de procesos del sistema operativo y configura proxy HTTPS; no expongas la app directamente a Internet sin TLS.
+5. Programa y verifica los respaldos. Antes de actualizar, crea un respaldo, detén el proceso, actualiza dependencias con `npm install`, ejecuta pruebas y vuelve a iniciar.
+
+Los errores no controlados de API producen JSON uniforme para el cliente y una línea JSON con nivel, fecha, método, ruta, estado y tipo de error en el log del proceso. No se registran cuerpos de solicitudes ni mensajes que puedan incluir datos sensibles. `GET /api/health` devuelve `503` si SQLite no responde.
+
+### Consulta de DNI y RUC
+
+El selector de clientes puede consultar DNI en RENIEC y RUC en SUNAT por medio de Decolecta. Genera un token en <https://decolecta.com/profile> y guárdalo como `DECOLECTA_API_TOKEN` únicamente en `.env`; las consultas salen desde el backend. El proveedor documenta 100 consultas gratuitas al mes, sujeto a cambios. La consulta está limitada a 30 solicitudes por IP cada 15 minutos. Al confirmar un resultado que aún no existe, el sistema registra el cliente y lo selecciona para el comprobante.
+
+### Pruebas temporales de SUNAT
+
+La conexión real de producción no está habilitada. SUNAT documenta dos entornos de prueba. Beta usa el endpoint beta y credenciales de prueba (`RUC+MODDATOS` / `MODDATOS`), sin requerir certificado digital registrado. Homologación SQA usa el endpoint `https://ww1.sunat.gob.pe/ol-ti-itcpgem-sqa/billService` y credenciales SOL secundarias autorizadas para el perfil de envío. La contraseña SOL no debe usarse en Beta ni compartirse por chat. La configuración solo acepta `SUNAT_MODE=disabled`, `beta` u `homologation`, fija los endpoints HTTPS y rechaza ambos modos si `NODE_ENV=production`.
+
+Para Beta configura `SUNAT_MODE=beta` y `SUNAT_RUC`. Para homologación configura `SUNAT_MODE=homologation`, `SUNAT_RUC`, `SUNAT_SOL_USER` y `SUNAT_SOL_PASSWORD` solo en `.env` local, y verifica con SUNAT el usuario secundario/perfil habilitado. No coloques credenciales en comandos, logs ni el repositorio. La Clave SOL autentica la llamada SOAP; la firma XMLDSig requiere aparte el certificado digital registrado del emisor. La configuración no envía comprobantes todavía; el XML, firma, envío y ciclo CDR deben completarse y probarse antes de considerar terminada la fase 4. La arquitectura final elegida sigue siendo un PSE autorizado, cuya API y credenciales sandbox deben definirse antes del despliegue.
+
+### Criterios para evaluar PostgreSQL
+
+No se migra la base de datos en esta fase. Reevalúa SQLite cuando se observen bloqueos de escritura frecuentes bajo concurrencia real, varios procesos/instancias escribiendo a la vez, crecimiento de usuarios simultáneos que afecte latencia o requisitos de alta disponibilidad/operación centralizada. Antes de aprobar una migración: medir esos indicadores, diseñar mapeo de esquema y tipos, ensayar exportación/importación en una copia, comparar conteos e importes, preparar periodo de solo lectura/corte, plan de reversión y respaldo restaurable. No ejecutar la migración hasta aprobar el plan y validar una prueba integral.
+
+## Datos sensibles en Git
+
+Las bases SQLite, respaldos y archivos `.env` están excluidos por `.gitignore`; `.env.example` no contiene secretos. Ignorar un archivo no lo elimina de commits anteriores. Si una base real o un secreto ya se publicó, rota las credenciales y coordina con quien administra el repositorio cualquier limpieza de historial; esta fase no reescribe el historial.

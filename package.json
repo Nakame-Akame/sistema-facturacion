@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "admin:create": "node scripts/create-admin.js",
+    "db:backup": "node scripts/backup.js",
+    "db:restore": "node scripts/restore.js",
+    "start": "node server.js",
+    "test": "node --test",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "repository": {
     "type": "git",
@@ -25,11 +30,15 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "express-session": "^1.19.0",
-    "html-pdf-node": "^1.0.8",
+    "helmet": "^8.3.0",
     "puppeteer-core": "^25.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/node": "^26.6.3",
+    "nodemon": "^3.1.14",
+    "typescript": "^5.9.3"
   }
 }
