@@ -28,7 +28,7 @@ function chromeLocal() {
   return candidates.find(candidate => candidate && fs.existsSync(candidate));
 }
 
-async function generarPdf(html) {
+async function generarPdf(html, formato) {
   let browser;
   if (process.platform === 'win32' || process.env.CHROME_EXECUTABLE_PATH) {
     const executablePath = chromeLocal();
@@ -48,9 +48,27 @@ async function generarPdf(html) {
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0' });
+    if (formato === 'a4') {
+      return await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: false,
+        margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+      });
+    }
+
+    const ancho = formato === '58mm' ? '58mm' : '80mm';
+    const alturaContenidoPx = await page.evaluate(() => Math.max(
+      document.body.scrollHeight,
+      document.documentElement.scrollHeight
+    ));
+    const alturaMm = Math.max(70, Math.ceil(alturaContenidoPx * 25.4 / 96) + 6);
     return await page.pdf({
-      format: 'A4',
-      margin: { top: '10mm', bottom: '10mm', left: '10mm', right: '10mm' },
+      width: ancho,
+      height: `${alturaMm}mm`,
+      printBackground: true,
+      preferCSSPageSize: false,
+      margin: { top: '3mm', bottom: '3mm', left: '3mm', right: '3mm' },
     });
   } finally {
     await browser.close();
@@ -97,6 +115,11 @@ router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
     `).all(req.params.id);
 
     const num    = `${comp.serie}-${String(comp.numero).padStart(6, '0')}`;
+    const formato = ['a4', '80mm', '58mm'].includes(req.query.formato)
+      ? req.query.formato
+      : 'a4';
+    const termica = formato !== 'a4';
+    const termica58 = formato === '58mm';
     const numHtml = escaparHtml(num);
     const label  = escaparHtml(TIPOS_LABEL[comp.tipo] || comp.tipo);
     const fecha  = new Date(comp.fecha).toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric' });
@@ -152,6 +175,7 @@ router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
       <meta charset="UTF-8">
       <style>
         * { box-sizing:border-box; margin:0; padding:0; }
+        @page { margin: 0; }
         body { font-family: Arial, sans-serif; font-size:13px; color:#111; padding:40px; }
         .header { display:flex; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:3px solid #1a1a2e; }
         .logo { font-size:22px; font-weight:900; color:#1a1a2e; }
@@ -175,6 +199,31 @@ router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
         .tot-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #eee; }
         .tot-row.final { font-size:16px; font-weight:900; color:#1a1a2e; border-bottom:none; border-top:3px solid #1a1a2e; margin-top:4px; padding-top:8px; }
         .footer { margin-top:32px; padding-top:14px; border-top:1px solid #eee; text-align:center; font-size:11px; color:#aaa; }
+        thead { display: table-header-group; }
+        tfoot { display: table-footer-group; }
+        tr, img, .cliente-bloque, .totales, .footer { break-inside: avoid; page-break-inside: avoid; }
+        h1, h2, h3 { break-after: avoid; page-break-after: avoid; }
+        ${termica ? `
+        body { width:${termica58 ? '52mm' : '74mm'}; padding:2mm; font-size:${termica58 ? '8px' : '9px'}; }
+        .header { display:block; margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed #222; }
+        .logo { font-size:${termica58 ? '12px' : '15px'}; text-align:center; }
+        .logo .tipo { font-size:${termica58 ? '8px' : '10px'}; }
+        .logo small { font-size:7px; }
+        .num { margin-top:7px; text-align:center; }
+        .num .serie { font-size:13px; }
+        .num .fecha { font-size:9px; }
+        .estado { display:none; }
+        .cliente-bloque { margin-bottom:9px; }
+        .cliente-nombre { font-size:${termica58 ? '9px' : '11px'}; overflow-wrap:anywhere; }
+        .cliente-info { font-size:${termica58 ? '8px' : '9px'}; line-height:1.4; overflow-wrap:anywhere; }
+        table { margin:8px 0; }
+        th { padding:5px 2px; font-size:${termica58 ? '7px' : '8px'}; }
+        td { padding:5px 2px; font-size:${termica58 ? '8px' : '9px'}; overflow-wrap:anywhere; }
+        .totales { width:100%; margin-top:8px; }
+        .tot-row { padding:3px 0; }
+        .tot-row.final { font-size:12px; border-top:1px dashed #222; }
+        .footer { margin-top:16px; padding-top:8px; font-size:8px; }
+        ` : ''}
       </style>
     </head>
     <body>
@@ -225,7 +274,7 @@ router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
               <td><strong>${escaparHtml(d.producto_nombre || d.descripcion_libre || '—')}</strong></td>
               <td>${d.cantidad} ${d.unidad && d.unidad !== 'UND' ? escaparHtml(d.unidad) : ''}</td>
               <td style="text-align:right">S/ ${d.precio_unitario.toFixed(2)}</td>
-              <td style="text-align:right"><strong>S/ ${d.subtotal.toFixed(2)}</strong></td>
+              <td style="text-align:right"><strong>S/ ${(comp.precios_incluyen_igv ? (d.precio_unitario * d.cantidad - d.descuento_item) : d.subtotal).toFixed(2)}</strong></td>
             </tr>`).join('')}
         </tbody>
       </table>
@@ -243,10 +292,10 @@ router.get('/:id', requierePermiso('comprobantes:ver'), async (req, res) => {
     </body>
     </html>`;
 
-    const pdfBuffer = await generarPdf(html);
+    const pdfBuffer = await generarPdf(html, formato);
 
     res.setHeader('Content-Type', 'application/pdf');
-    const filename = num.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${num}${termica ? `-ticket-${formato}` : ''}`.replace(/[^a-zA-Z0-9_-]/g, '_');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
     res.send(pdfBuffer);
 

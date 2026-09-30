@@ -58,6 +58,16 @@ npm start
 
 El servidor queda disponible en `http://localhost:3000` (o en el puerto definido por `PORT`). La ruta `GET /api/health` comprueba también que SQLite responde. El frontend usa una ruta relativa `/api`, así que no requiere cambiar código al desplegarlo detrás de otro host o puerto.
 
+### Importar productos desde XLS
+
+Para cargar un catálogo con las columnas `Producto`, `Precio Unidad`, `Precio Mayor`, `Precio Especial`, `Precio Compra Promedio`, `Stock Real` y `Familia`:
+
+```powershell
+node scripts/import-productos.js .\productos.xls
+```
+
+La importación usa `Precio Unidad` como Unidad, `Precio Mayor` como Rebaja, `Precio Especial` como Pase y `Precio Compra Promedio` como costo de compra. Todos estos importes se consideran con IGV incluido. Actualiza productos existentes por nombre, evita duplicados, convierte stock negativo a cero y omite filas sin precio de venta válido.
+
 ## Pruebas
 
 ```powershell

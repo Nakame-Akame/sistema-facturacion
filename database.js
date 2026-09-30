@@ -26,6 +26,7 @@ db.exec(`
     nombre TEXT NOT NULL,
     descripcion TEXT,
     precio REAL NOT NULL,
+    precio_compra REAL DEFAULT 0,
     stock INTEGER DEFAULT 0,
     categoria TEXT,
     unidad TEXT DEFAULT 'UND', -- UND, KG, LT, MT, etc.
@@ -71,6 +72,7 @@ db.exec(`
     descuento REAL DEFAULT 0,
     total REAL DEFAULT 0,
     afecta_igv INTEGER DEFAULT 1, -- 0 = no afecta IGV
+    precios_incluyen_igv INTEGER DEFAULT 0,
 
     -- Estado
     estado TEXT DEFAULT 'emitido',
@@ -115,7 +117,60 @@ db.exec(`
     serie TEXT NOT NULL,
     ultimo_numero INTEGER DEFAULT 0
   );
+
+  -- Documentos de compras recibidos
+  CREATE TABLE IF NOT EXISTS documentos_compra (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tipo TEXT NOT NULL,
+    orden_compra TEXT,
+    serie TEXT,
+    numero TEXT,
+    condicion_pago TEXT,
+    plazo_pago TEXT,
+    fecha_factura TEXT,
+    fecha_ingreso TEXT,
+    fecha_pago TEXT,
+    porcentaje REAL,
+    estado TEXT DEFAULT 'pendiente',
+    proveedor_documento TEXT NOT NULL,
+    proveedor_razon_social TEXT NOT NULL,
+    proveedor_direccion TEXT,
+    moneda TEXT DEFAULT 'PEN',
+    tipo_cambio REAL,
+    archivo_nombre TEXT,
+    archivo_ruta TEXT,
+    archivo_mime TEXT,
+    factura_archivo_nombre TEXT,
+    factura_archivo_ruta TEXT,
+    factura_archivo_mime TEXT,
+    guia_archivo_nombre TEXT,
+    guia_archivo_ruta TEXT,
+    guia_archivo_mime TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS tipo_cambio_diario (
+    fecha TEXT PRIMARY KEY,
+    compra REAL NOT NULL,
+    venta REAL NOT NULL,
+    fuente TEXT NOT NULL,
+    actualizado_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
+
+const columnasCompras = db.pragma('table_info(documentos_compra)');
+for (const columna of [
+  ['factura_archivo_nombre', 'TEXT'],
+  ['factura_archivo_ruta', 'TEXT'],
+  ['factura_archivo_mime', 'TEXT'],
+  ['guia_archivo_nombre', 'TEXT'],
+  ['guia_archivo_ruta', 'TEXT'],
+  ['guia_archivo_mime', 'TEXT'],
+]) {
+  if (!columnasCompras.some(actual => actual.name === columna[0])) {
+    db.exec(`ALTER TABLE documentos_compra ADD COLUMN ${columna[0]} ${columna[1]}`);
+  }
+}
 
 const columnasClientes = db.pragma('table_info(clientes)');
 if (!columnasClientes.some(columna => columna.name === 'tipo_documento')) {
@@ -125,6 +180,33 @@ if (!columnasClientes.some(columna => columna.name === 'tipo_documento')) {
 const columnasProductos = db.pragma('table_info(productos)');
 if (!columnasProductos.some(columna => columna.name === 'unidad')) {
   db.exec("ALTER TABLE productos ADD COLUMN unidad TEXT DEFAULT 'UND'");
+}
+if (!columnasProductos.some(columna => columna.name === 'precio_rebaja')) {
+  db.exec('ALTER TABLE productos ADD COLUMN precio_rebaja REAL NOT NULL DEFAULT 0');
+}
+if (!columnasProductos.some(columna => columna.name === 'precio_pase')) {
+  db.exec('ALTER TABLE productos ADD COLUMN precio_pase REAL NOT NULL DEFAULT 0');
+}
+if (!columnasProductos.some(columna => columna.name === 'precio_compra')) {
+  db.exec('ALTER TABLE productos ADD COLUMN precio_compra REAL NOT NULL DEFAULT 0');
+}
+db.exec(`
+  UPDATE productos
+  SET precio_rebaja = precio
+  WHERE precio_rebaja <= 0;
+  UPDATE productos
+  SET precio_pase = precio
+  WHERE precio_pase <= 0;
+`);
+
+const columnasDetalle = db.pragma('table_info(detalle_comprobante)');
+if (!columnasDetalle.some(columna => columna.name === 'tipo_precio')) {
+  db.exec("ALTER TABLE detalle_comprobante ADD COLUMN tipo_precio TEXT NOT NULL DEFAULT 'unidad'");
+}
+
+const columnasComprobantes = db.pragma('table_info(comprobantes)');
+if (!columnasComprobantes.some(columna => columna.name === 'precios_incluyen_igv')) {
+  db.exec('ALTER TABLE comprobantes ADD COLUMN precios_incluyen_igv INTEGER NOT NULL DEFAULT 0');
 }
 
 // Insertar series por defecto si no existen

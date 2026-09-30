@@ -32,6 +32,20 @@ router.get('/', requierePermiso('comprobantes:ver'), (req, res) => {
   }
 });
 
+// ─── LISTAR TIPOS DISPONIBLES ─────────────────────────────
+router.get('/meta/tipos', requierePermiso('comprobantes:ver'), (req, res) => {
+  const series = db.prepare('SELECT * FROM series').all();
+  const data = series.map(s => ({
+    tipo: s.tipo,
+    serie: s.serie,
+    ultimo_numero: s.ultimo_numero,
+    label: TIPOS[s.tipo]?.label || s.tipo,
+    afecta_igv: TIPOS[s.tipo]?.afecta_igv,
+    mueve_stock: TIPOS[s.tipo]?.mueve_stock,
+  }));
+  res.json({ ok: true, data });
+});
+
 // ─── VER UNO ──────────────────────────────────────────────
 router.get('/:id', requierePermiso('comprobantes:ver'), (req, res) => {
   try {
@@ -115,17 +129,4 @@ router.patch('/:id/estado', (req, res, next) => {
   }
 });
 
-// ─── LISTAR TIPOS DISPONIBLES ─────────────────────────────
-router.get('/meta/tipos', requierePermiso('comprobantes:ver'), (req, res) => {
-  const series = db.prepare('SELECT * FROM series').all();
-  const data = series.map(s => ({
-    tipo: s.tipo,
-    serie: s.serie,
-    ultimo_numero: s.ultimo_numero,
-    label: TIPOS[s.tipo]?.label || s.tipo,
-    afecta_igv: TIPOS[s.tipo]?.afecta_igv,
-    mueve_stock: TIPOS[s.tipo]?.mueve_stock,
-  }));
-  res.json({ ok: true, data });
-});
 module.exports = router;

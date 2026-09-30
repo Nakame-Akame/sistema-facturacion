@@ -191,7 +191,7 @@ function renderProductos(lista) {
     <tr>
       <td><strong>${p.nombre}</strong><br><small style="color:var(--muted)">${p.descripcion||''}</small></td>
       <td>${p.categoria ? `<span class="badge badge-blue">${p.categoria}</span>` : '—'}</td>
-      <td class="mono">S/ ${p.precio.toFixed(2)}</td>
+      <td class="mono">U: S/ ${p.precio.toFixed(2)}<br><small>R: S/ ${p.precio_rebaja.toFixed(2)} | P: S/ ${p.precio_pase.toFixed(2)}</small></td>
       <td>${p.stock <= 5
         ? `<span class="badge badge-red">⚠️ ${p.stock}</span>`
         : `<span class="badge badge-green">${p.stock}</span>`}
@@ -214,6 +214,8 @@ function abrirModalProducto() {
   document.getElementById('producto-id').value = '';
   document.getElementById('producto-nombre').value = '';
   document.getElementById('producto-precio').value = '';
+  document.getElementById('producto-precio-rebaja').value = '';
+  document.getElementById('producto-precio-pase').value = '';
   document.getElementById('producto-stock').value = '';
   document.getElementById('producto-cat').value = '';
   document.getElementById('producto-desc').value = '';
@@ -228,6 +230,8 @@ async function editarProducto(id) {
   document.getElementById('producto-id').value = p.id;
   document.getElementById('producto-nombre').value = p.nombre;
   document.getElementById('producto-precio').value = p.precio;
+  document.getElementById('producto-precio-rebaja').value = p.precio_rebaja;
+  document.getElementById('producto-precio-pase').value = p.precio_pase;
   document.getElementById('producto-stock').value = p.stock;
   document.getElementById('producto-cat').value = p.categoria || '';
   document.getElementById('producto-desc').value = p.descripcion || '';
@@ -240,12 +244,14 @@ async function guardarProducto() {
   const body = {
     nombre: document.getElementById('producto-nombre').value,
     precio: parseFloat(document.getElementById('producto-precio').value),
+    precio_rebaja: parseFloat(document.getElementById('producto-precio-rebaja').value),
+    precio_pase: parseFloat(document.getElementById('producto-precio-pase').value),
     stock: parseInt(document.getElementById('producto-stock').value) || 0,
     categoria: document.getElementById('producto-cat').value,
     descripcion: document.getElementById('producto-desc').value,
   };
   if (!body.nombre) return toast('El nombre es obligatorio', 'error');
-  if (!body.precio || body.precio <= 0) return toast('El precio debe ser mayor a 0', 'error');
+  if ([body.precio, body.precio_rebaja, body.precio_pase].some(precio => !precio || precio <= 0)) return toast('Los tres precios deben ser mayores a 0', 'error');
   const url = id ? `${API}/productos/${id}` : `${API}/productos`;
   const method = id ? 'PUT' : 'POST';
   const r = await apiFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -422,7 +428,7 @@ async function abrirModalFactura(tipoPreseleccionado) {
   const selProd = document.getElementById('item-producto');
   selProd.innerHTML = '<option value="">-- Selecciona producto --</option>';
   (dp.data || []).forEach(p => {
-    selProd.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-stock="${p.stock}">${p.nombre} — S/ ${p.precio.toFixed(2)} (stock: ${p.stock})</option>`;
+  selProd.innerHTML += `<option value="${p.id}" data-precio-unidad="${p.precio}" data-precio-rebaja="${p.precio_rebaja}" data-precio-pase="${p.precio_pase}" data-stock="${p.stock}">${p.nombre} — S/ ${p.precio.toFixed(2)} (stock: ${p.stock})</option>`;
   });
 
   // Cargar comprobantes de referencia si aplica (facturas/boletas para vincular notas)
@@ -448,6 +454,7 @@ function onCambioCondicionPago() {
 
 function agregarItem() {
   const sel = document.getElementById('item-producto');
+  const tipoPrecio = document.getElementById('item-tipo-precio').value;
   const cantidad = parseInt(document.getElementById('item-cantidad').value);
   const opt = sel.options[sel.selectedIndex];
   if (!sel.value) return toast('Selecciona un producto', 'error');
@@ -457,10 +464,11 @@ function agregarItem() {
   if (CONFIG_TIPO[tipo]?.es_guia === false && tipo !== 'nota_devolucion' && tipo !== 'cotizacion' && tipo !== 'nota_pedido' && cantidad > stock) {
     return toast(`Stock insuficiente. Disponible: ${stock}`, 'error');
   }
-  const existe = itemsFactura.find(i => i.producto_id == sel.value);
+  const precio = parseFloat(opt.dataset[`precio${tipoPrecio[0].toUpperCase()}${tipoPrecio.slice(1)}`]);
+  const existe = itemsFactura.find(i => i.producto_id == sel.value && i.tipo_precio === tipoPrecio);
   if (existe) { existe.cantidad += cantidad; existe.subtotal = existe.precio * existe.cantidad; }
   else {
-    itemsFactura.push({ producto_id: sel.value, nombre: opt.text.split('—')[0].trim(), cantidad, precio: parseFloat(opt.dataset.precio), subtotal: parseFloat(opt.dataset.precio) * cantidad });
+    itemsFactura.push({ producto_id: sel.value, nombre: opt.text.split('—')[0].trim(), tipo_precio: tipoPrecio, cantidad, precio, subtotal: precio * cantidad });
   }
   renderItems();
 }
@@ -474,7 +482,7 @@ function renderItems() {
   if (itemsFactura.length === 0) { totDiv.style.display = 'none'; return; }
   itemsFactura.forEach((it, i) => {
     lista.innerHTML += `<div class="item-row">
-      <span>${it.nombre}</span>
+      <span>${it.nombre} <small>(${it.tipo_precio})</small></span>
       <span class="mono">${it.cantidad}</span>
       <span class="mono">S/ ${it.subtotal.toFixed(2)}</span>
       <button class="btn btn-danger btn-sm" onclick="quitarItem(${i})">✕</button>
@@ -517,7 +525,7 @@ async function emitirFactura() {
     cliente_id: parseInt(cliente_id),
     condicion_pago,
     fecha_vencimiento,
-    items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad })),
+    items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad, tipo_precio: i.tipo_precio })),
   };
 
   if (cfg.es_guia) {

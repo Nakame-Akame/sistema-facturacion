@@ -17,6 +17,19 @@ function normalizarStock(stock) {
   return valor;
 }
 
+function normalizarCosto(costo) {
+  const valor = costo === undefined ? 0 : Number(costo);
+  if (!Number.isFinite(valor) || valor < 0 || valor > 1000000000) return null;
+  return desdeCentimos(aCentimos(valor, 'El precio de compra'));
+}
+
+function normalizarPrecios(precios) {
+  const precioUnidad = normalizarPrecio(precios.precio);
+  const precioRebaja = normalizarPrecio(precios.precio_rebaja ?? precios.precio);
+  const precioPase = normalizarPrecio(precios.precio_pase ?? precios.precio);
+  return { precioUnidad, precioRebaja, precioPase };
+}
+
 // GET - Listar todos los productos
 router.get('/', requierePermiso('productos:ver'), (req, res) => {
   try {
@@ -41,19 +54,23 @@ router.get('/:id', requierePermiso('productos:ver'), (req, res) => {
 // POST - Crear nuevo producto
 router.post('/', requierePermiso('productos:crear'), (req, res) => {
   try {
-    const { nombre, descripcion, precio, stock, categoria } = req.body;
+    const { nombre, descripcion, precio, precio_rebaja, precio_pase, precio_compra, stock, categoria } = req.body;
     const nombreNormalizado = typeof nombre === 'string' ? nombre.trim() : '';
-    const precioNormalizado = normalizarPrecio(precio);
+    const precios = normalizarPrecios({ precio, precio_rebaja, precio_pase });
+    const costo = normalizarCosto(precio_compra);
     const stockNormalizado = normalizarStock(stock);
     if (!nombreNormalizado) return res.status(400).json({ ok: false, error: 'El nombre es obligatorio' });
     if (nombreNormalizado.length > 200) return res.status(400).json({ ok: false, error: 'El nombre es demasiado largo' });
-    if (precioNormalizado === null) return res.status(400).json({ ok: false, error: 'El precio debe ser positivo y válido' });
+    if (Object.values(precios).some(precioProducto => precioProducto === null)) {
+      return res.status(400).json({ ok: false, error: 'Los tres precios deben ser positivos y válidos' });
+    }
+    if (costo === null) return res.status(400).json({ ok: false, error: 'El precio de compra no es válido' });
     if (stockNormalizado === null) return res.status(400).json({ ok: false, error: 'El stock debe ser un entero no negativo' });
 
     const result = db.prepare(`
-      INSERT INTO productos (nombre, descripcion, precio, stock, categoria)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(nombreNormalizado, descripcion, precioNormalizado, stockNormalizado, categoria);
+      INSERT INTO productos (nombre, descripcion, precio, precio_rebaja, precio_pase, precio_compra, stock, categoria)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(nombreNormalizado, descripcion, precios.precioUnidad, precios.precioRebaja, precios.precioPase, costo, stockNormalizado, categoria);
 
     res.status(201).json({ ok: true, id: result.lastInsertRowid, mensaje: 'Producto creado' });
   } catch (err) {
@@ -64,21 +81,25 @@ router.post('/', requierePermiso('productos:crear'), (req, res) => {
 // PUT - Actualizar producto
 router.put('/:id', requierePermiso('productos:editar'), (req, res) => {
   try {
-    const { nombre, descripcion, precio, stock, categoria } = req.body;
+    const { nombre, descripcion, precio, precio_rebaja, precio_pase, precio_compra, stock, categoria } = req.body;
     const nombreNormalizado = typeof nombre === 'string' ? nombre.trim() : '';
-    const precioNormalizado = normalizarPrecio(precio);
+    const precios = normalizarPrecios({ precio, precio_rebaja, precio_pase });
+    const costo = normalizarCosto(precio_compra);
     const stockNormalizado = normalizarStock(stock);
     if (!nombreNormalizado) return res.status(400).json({ ok: false, error: 'El nombre es obligatorio' });
     if (nombreNormalizado.length > 200) return res.status(400).json({ ok: false, error: 'El nombre es demasiado largo' });
-    if (precioNormalizado === null) return res.status(400).json({ ok: false, error: 'El precio debe ser positivo y válido' });
+    if (Object.values(precios).some(precioProducto => precioProducto === null)) {
+      return res.status(400).json({ ok: false, error: 'Los tres precios deben ser positivos y válidos' });
+    }
+    if (costo === null) return res.status(400).json({ ok: false, error: 'El precio de compra no es válido' });
     if (stockNormalizado === null) return res.status(400).json({ ok: false, error: 'El stock debe ser un entero no negativo' });
     const existe = db.prepare('SELECT id FROM productos WHERE id = ?').get(req.params.id);
     if (!existe) return res.status(404).json({ ok: false, error: 'Producto no encontrado' });
 
     db.prepare(`
-      UPDATE productos SET nombre=?, descripcion=?, precio=?, stock=?, categoria=?
+      UPDATE productos SET nombre=?, descripcion=?, precio=?, precio_rebaja=?, precio_pase=?, precio_compra=?, stock=?, categoria=?
       WHERE id=?
-    `).run(nombreNormalizado, descripcion, precioNormalizado, stockNormalizado, categoria, req.params.id);
+    `).run(nombreNormalizado, descripcion, precios.precioUnidad, precios.precioRebaja, precios.precioPase, costo, stockNormalizado, categoria, req.params.id);
 
     res.json({ ok: true, mensaje: 'Producto actualizado' });
   } catch (err) {

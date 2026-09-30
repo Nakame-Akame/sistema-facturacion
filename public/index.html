@@ -338,6 +338,7 @@
     <button class="nav-item" onclick="goTo('facturas')"><span class="icon">🧾</span> Comprobantes</button>
     <button class="nav-item" onclick="goTo('clientes')"><span class="icon">👥</span> Clientes</button>
     <button class="nav-item" onclick="goTo('productos')"><span class="icon">📦</span> Productos</button>
+    <button class="nav-item" onclick="goTo('compras')"><span class="icon">📥</span> Compras</button>
     <button class="nav-item" onclick="goTo('reportes')"><span class="icon">📈</span> Reportes</button>
   </nav>
   <div class="sidebar-footer">
@@ -499,11 +500,11 @@
           <p class="sales-subtitle">Aún no agregas productos.</p>
         </div>
         <div class="sales-summary">
-          <div class="total-row"><span style="color:var(--muted)">Subtotal</span><span class="mono" id="venta-subtotal">S/ 0.00</span></div>
+          <div class="total-row"><span style="color:var(--muted)">Subtotal sin IGV</span><span class="mono" id="venta-subtotal">S/ 0.00</span></div>
           <div class="total-row"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="venta-igv">S/ 0.00</span></div>
           <div class="total-row final"><span>TOTAL</span><span class="mono" id="venta-total">S/ 0.00</span></div>
         </div>
-        <button class="btn btn-success sales-submit" id="btn-emitir-venta" type="button" onclick="emitirVentaDesdePagina()">Emitir boleta</button>
+        <button class="btn btn-success sales-submit" id="btn-emitir-venta" type="button" onclick="abrirConfirmacionVenta()">Emitir boleta</button>
       </section>
     </div>
   </div>
@@ -572,7 +573,7 @@
         </div>
       </div>
       <table>
-        <thead><tr><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th>Acciones</th></tr></thead>
+        <thead><tr><th>Nombre</th><th>Categoría</th><th>Precios</th><th>Stock</th><th>Acciones</th></tr></thead>
         <tbody id="productos-body">
           <tr><td colspan="5"><div class="empty"><span class="icon">📦</span><p>No hay productos aún</p></div></td></tr>
         </tbody>
@@ -623,6 +624,53 @@
     </div>
   </div>
 
+  <div class="page" id="page-compras">
+    <div class="sales-page-head">
+      <div><p class="eyebrow">DOCUMENTOS RECIBIDOS</p><h2>Facturas y guías de compra</h2></div>
+    </div>
+    <section class="table-card panel-spacing">
+      <div class="table-header"><div><h2>Registrar documento</h2><p class="sales-subtitle">Guarda los datos del proveedor y adjunta el PDF o imagen.</p></div></div>
+      <form id="form-compra" onsubmit="guardarCompra(event)">
+        <div class="purchase-rate-panel">
+          <div class="purchase-rate-field"><label for="compra-moneda">Moneda *</label><select id="compra-moneda" name="moneda"><option value="PEN">PEN (S/)</option><option value="USD">USD ($)</option></select></div>
+          <div class="purchase-rate-field"><label for="compra-tipo-cambio">Tipo de cambio aplicado</label><input id="compra-tipo-cambio" type="number" name="tipo_cambio" min="0" step="0.0001" readonly></div>
+          <button class="purchase-sunat-button" type="button" onclick="actualizarTipoCambio()"><span>◈</span> SUNAT</button>
+          <div class="purchase-rate-meta"><span id="compra-cambio-fecha">Consultando SUNAT...</span><small>Compra <b id="compra-cambio-compra">--</b> · Venta <b id="compra-cambio-venta">--</b></small></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label>Tipo *</label><select name="tipo" required><option value="factura">Factura</option><option value="guia">Guía de remisión</option></select></div>
+          <div class="form-group"><label>Condición de pago</label><select name="condicion_pago"><option value="contado">Contado</option><option value="credito">Crédito</option></select></div>
+          <div class="form-group"><label>Serie</label><input name="serie" placeholder="F001"></div>
+          <div class="form-group"><label>Número</label><input name="numero" placeholder="00001234"></div>
+          <div class="form-group"><label>Orden de compra</label><input name="orden_compra"></div>
+          <div class="form-group"><label>Estado</label><select name="estado"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option><option value="entregado">Entregado</option></select></div>
+          <div class="form-group"><label>Fecha de factura</label><input type="date" name="fecha_factura"></div>
+          <div class="form-group"><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso"></div>
+          <div class="form-group"><label>Fecha de pago</label><input type="date" name="fecha_pago"></div>
+          <div class="form-group"><label>Porcentaje</label><input type="number" name="porcentaje" min="0" max="100" step="0.01"></div>
+          <div class="form-group"><label>N° documento proveedor *</label><input name="proveedor_documento" required></div>
+          <div class="form-group"><label>Razón social *</label><input name="proveedor_razon_social" required></div>
+          <div class="form-group"><label>Dirección</label><input name="proveedor_direccion"></div>
+          <div class="purchase-upload-grid full">
+            <div class="purchase-upload-card">
+              <div class="purchase-upload-heading"><span class="purchase-upload-icon">▤</span><div><strong>Factura de compra</strong><small>PDF o imagen del comprobante</small></div></div>
+              <label class="purchase-file-input"><span>Seleccionar factura</span><input type="file" name="archivo_factura" accept="application/pdf,image/jpeg,image/png"></label>
+            </div>
+            <div class="purchase-upload-card">
+              <div class="purchase-upload-heading"><span class="purchase-upload-icon">↗</span><div><strong>Guía de remisión</strong><small>Documento de traslado asociado</small></div></div>
+              <label class="purchase-file-input"><span>Seleccionar guía</span><input type="file" name="archivo_guia" accept="application/pdf,image/jpeg,image/png"></label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar documento</button></div>
+      </form>
+    </section>
+    <section class="table-card">
+      <div class="table-header"><h2>Historial de compras</h2></div>
+      <table><thead><tr><th>Tipo</th><th>Documento</th><th>Proveedor</th><th>Fecha</th><th>Estado</th><th>Archivo</th></tr></thead><tbody id="compras-body"><tr><td colspan="6"><div class="empty"><p>Cargando documentos...</p></div></td></tr></tbody></table>
+    </section>
+  </div>
+
 </main>
 
 <!-- ===== MODAL CLIENTE ===== -->
@@ -653,7 +701,10 @@
     <input type="hidden" id="producto-id">
     <div class="form-grid">
       <div class="form-group full"><label>Nombre *</label><input type="text" id="producto-nombre" placeholder="Ej: Arroz 1kg"></div>
-      <div class="form-group"><label>Precio (S/) *</label><input type="number" id="producto-precio" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio unidad con IGV (S/) *</label><input type="number" id="producto-precio" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio rebaja (S/) *</label><input type="number" id="producto-precio-rebaja" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio pase (S/) *</label><input type="number" id="producto-precio-pase" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio compra con IGV (S/)</label><input type="number" id="producto-precio-compra" placeholder="0.00" step="0.01" min="0"></div>
       <div class="form-group"><label>Stock inicial</label><input type="number" id="producto-stock" placeholder="0" min="0"></div>
       <div class="form-group"><label>Categoría</label><input type="text" id="producto-cat" placeholder="Ej: Abarrotes"></div>
       <div class="form-group full"><label>Descripción</label><input type="text" id="producto-desc" placeholder="Descripción opcional"></div>
@@ -731,10 +782,19 @@
     </div>
 
     <div class="section-title">Agregar productos</div>
-    <div style="display:grid;grid-template-columns:2fr 80px 36px;gap:8px;margin-bottom:12px;align-items:end;">
+    <div style="display:grid;grid-template-columns:2fr 140px 80px 36px;gap:8px;margin-bottom:12px;align-items:end;">
       <div class="form-group" style="margin:0">
         <label>Producto</label>
-        <select id="item-producto"></select>
+        <select id="item-producto" onchange="mostrarPreciosProducto()"></select>
+        <div id="item-precios-disponibles" style="font-size:12px;color:var(--muted);margin-top:4px;">Unidad: S/ 0.00 · Rebaja: S/ 0.00 · Pase: S/ 0.00</div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Precio</label>
+        <select id="item-tipo-precio" onchange="mostrarPreciosProducto()">
+          <option value="unidad">Unidad</option>
+          <option value="rebaja">Rebaja</option>
+          <option value="pase">Pase</option>
+        </select>
       </div>
       <div class="form-group" style="margin:0">
         <label>Cantidad</label>
@@ -767,13 +827,35 @@
     <div id="factura-preview-content"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
-      <button class="btn btn-ghost" onclick="window.print()">🖨️ Imprimir</button>
-      <button class="btn btn-primary" onclick="descargarPDF()">📄 Descargar PDF</button>
+      <label class="print-format-control">Formato
+        <select id="formato-impresion">
+          <option value="a4">A4</option>
+          <option value="80mm" selected>Ticket 80 mm</option>
+          <option value="58mm">Ticket 58 mm</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" onclick="imprimirFormatoSeleccionado()">🖨️ Imprimir / PDF</button>
     </div>
   </div>
 </div>
 
 <!-- TOAST -->
+<div class="modal-overlay" id="modal-confirmar-venta">
+  <div class="modal modal-confirmar">
+    <button class="modal-close" onclick="cerrarModal('modal-confirmar-venta')">✕</button>
+    <div class="confirmar-icon">✓</div>
+    <h2>Guardar registro</h2>
+    <p>¿Estás seguro que deseas guardar el registro?</p>
+    <label class="confirmar-formato">Formato de impresión
+      <select id="formato-confirmacion"><option value="80mm">Ticket 80 mm</option><option value="58mm">Ticket 58 mm</option><option value="a4">A4</option></select>
+    </label>
+    <div class="modal-footer confirmar-actions">
+      <button class="btn btn-primary" onclick="procesarVentaConfirmada(false)">Guardar</button>
+      <button class="btn btn-primary" onclick="procesarVentaConfirmada(true)">Guardar e Imprimir</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 </div><!-- /app-shell -->
@@ -805,7 +887,7 @@ function goTo(page) {
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick') === `goTo('${page}')`) n.classList.add('active');
   });
-  const titles = { dashboard: 'Dashboard', ventas: 'Ventas', facturas: 'Comprobantes', clientes: 'Clientes', productos: 'Productos', reportes: 'Reportes' };
+  const titles = { dashboard: 'Dashboard', ventas: 'Ventas', facturas: 'Comprobantes', clientes: 'Clientes', productos: 'Productos', compras: 'Compras', reportes: 'Reportes' };
   document.getElementById('page-title').textContent = titles[page] || page;
 
   if (page === 'dashboard') cargarDashboard();
@@ -813,6 +895,7 @@ function goTo(page) {
   if (page === 'facturas') cargarFacturas();
   if (page === 'clientes') cargarClientes();
   if (page === 'productos') cargarProductos();
+  if (page === 'compras') cargarCompras();
   if (page === 'reportes') cargarReportes();
 }
 
@@ -1017,6 +1100,68 @@ async function cargarVentas() {
   }
 }
 
+async function cargarCompras() {
+  cargarTipoCambio();
+  const respuesta = await apiFetch(`${API}/compras`);
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado.ok) return toast(resultado.error || 'No se pudieron cargar las compras', 'error');
+  const cuerpo = document.getElementById('compras-body');
+  cuerpo.innerHTML = (resultado.data || []).map(documento => `
+    <tr>
+      <td>${documento.tipo === 'guia' ? 'Guía de remisión' : 'Factura'}</td>
+      <td>${documento.serie || ''}${documento.numero ? '-' + documento.numero : ''}</td>
+      <td><strong>${documento.proveedor_razon_social}</strong><br><small>${documento.proveedor_documento}</small></td>
+      <td>${documento.fecha_factura || '—'}</td>
+      <td><span class="badge badge-blue">${documento.estado}</span></td>
+      <td>${documento.factura_archivo_ruta ? `<a href="${API}/compras/${documento.id}/archivo?tipo=factura" target="_blank">Factura</a>` : '—'}${documento.guia_archivo_ruta ? ` <a href="${API}/compras/${documento.id}/archivo?tipo=guia" target="_blank">Guía</a>` : ''}</td>
+    </tr>`).join('') || '<tr><td colspan="6"><div class="empty"><p>No hay documentos registrados</p></div></td></tr>';
+}
+
+async function cargarTipoCambio() {
+  const respuesta = await apiFetch(`${API}/tipo-cambio`);
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado.ok) {
+    document.getElementById('compra-cambio-fecha').textContent = 'No disponible';
+    return;
+  }
+  const cambio = resultado.data;
+  document.getElementById('compra-cambio-fecha').textContent = `${cambio.fecha}${cambio.vencido ? ' · último guardado' : ''}`;
+  document.getElementById('compra-cambio-compra').textContent = `S/ ${Number(cambio.compra).toFixed(3)}`;
+  document.getElementById('compra-cambio-venta').textContent = `S/ ${Number(cambio.venta).toFixed(3)}`;
+  document.getElementById('compra-tipo-cambio').value = Number(cambio.venta).toFixed(3);
+}
+
+async function actualizarTipoCambio() {
+  const boton = document.querySelector('.purchase-sunat-button');
+  boton.disabled = true;
+  boton.classList.add('loading');
+  try {
+    const respuesta = await apiFetch(`${API}/tipo-cambio?actualizar=1`);
+    const resultado = await respuesta.json();
+    if (!respuesta.ok || !resultado.ok) return toast(resultado.error || 'No se pudo consultar SUNAT', 'error');
+    const cambio = resultado.data;
+    document.getElementById('compra-cambio-fecha').textContent = `${cambio.fecha} · actualizado ahora`;
+    document.getElementById('compra-cambio-compra').textContent = `S/ ${Number(cambio.compra).toFixed(3)}`;
+    document.getElementById('compra-cambio-venta').textContent = `S/ ${Number(cambio.venta).toFixed(3)}`;
+    document.getElementById('compra-tipo-cambio').value = Number(cambio.venta).toFixed(3);
+    toast('Tipo de cambio actualizado desde SUNAT');
+  } finally {
+    boton.disabled = false;
+    boton.classList.remove('loading');
+  }
+}
+
+async function guardarCompra(event) {
+  event.preventDefault();
+  const formulario = event.currentTarget;
+  const respuesta = await apiFetch(`${API}/compras`, { method: 'POST', body: new FormData(formulario) });
+  const resultado = await respuesta.json();
+  if (!respuesta.ok || !resultado.ok) return toast(resultado.error || 'No se pudo guardar la compra', 'error');
+  toast('Documento de compra guardado');
+  formulario.reset();
+  cargarCompras();
+}
+
 function renderProductosVenta() {
   const catalogo = document.getElementById('ventas-productos-body');
   const query = (document.getElementById('buscar-producto-venta').value || '').trim().toLocaleLowerCase('es');
@@ -1035,6 +1180,7 @@ function renderProductosVenta() {
 
   productos.forEach(producto => {
     const card = document.createElement('article');
+
     card.className = 'sales-product-card';
     const top = document.createElement('div');
     top.className = 'sales-product-top';
@@ -1060,10 +1206,19 @@ function renderProductosVenta() {
     const price = document.createElement('div');
     price.className = 'sales-product-price';
     price.textContent = `S/ ${Number(producto.precio).toFixed(2)}`;
+    const priceType = document.createElement('select');
+    priceType.id = `venta-precio-${producto.id}`;
+    priceType.className = 'sales-price-type';
+    [['unidad', 'Unidad'], ['rebaja', 'Rebaja'], ['pase', 'Pase']].forEach(([value, label]) => {
+      priceType.add(new Option(label, value));
+    });
+    priceType.addEventListener('change', () => {
+      price.textContent = `S/ ${obtenerPrecioProducto(producto, priceType.value).toFixed(2)}`;
+    });
     const stock = document.createElement('div');
     stock.className = `sales-product-availability${Number(producto.stock) <= 5 ? ' low' : ''}`;
     stock.textContent = Number(producto.stock) > 0 ? `Disponible: ${producto.stock}` : 'Sin stock';
-    productInfo.append(price, stock);
+    productInfo.append(price, priceType, stock);
 
     const controls = document.createElement('div');
     controls.className = 'sales-add-controls';
@@ -1091,6 +1246,15 @@ function renderProductosVenta() {
   });
 }
 
+function obtenerPrecioProducto(producto, tipoPrecio) {
+  const precios = {
+    unidad: Number(producto.precio),
+    rebaja: Number(producto.precio_rebaja),
+    pase: Number(producto.precio_pase),
+  };
+  return precios[tipoPrecio] > 0 ? precios[tipoPrecio] : precios.unidad;
+}
+
 function deduplicarClientesVenta(clientes) {
   const unicos = new Map();
   clientes.forEach(cliente => {
@@ -1104,16 +1268,18 @@ function deduplicarClientesVenta(clientes) {
 function agregarProductoAVenta(productoId) {
   const producto = productosVentaData.find(item => item.id === productoId);
   const cantidad = Number(document.getElementById(`venta-cantidad-${productoId}`).value);
+  const tipoPrecio = document.getElementById(`venta-precio-${productoId}`).value;
+  const precio = obtenerPrecioProducto(producto, tipoPrecio);
   if (!producto || !Number.isFinite(cantidad) || cantidad <= 0) {
     return toast('Indica una cantidad válida', 'error');
   }
 
-  const existente = carritoVenta.find(item => item.producto_id === productoId);
+  const existente = carritoVenta.find(item => item.producto_id === productoId && item.tipo_precio === tipoPrecio);
   if (cantidad + (existente?.cantidad || 0) > Number(producto.stock)) {
     return toast(`Stock insuficiente. Disponible: ${producto.stock}`, 'error');
   }
   if (existente) existente.cantidad += cantidad;
-  else carritoVenta.push({ producto_id: producto.id, nombre: producto.nombre, precio: Number(producto.precio), cantidad });
+  else carritoVenta.push({ producto_id: producto.id, nombre: producto.nombre, tipo_precio: tipoPrecio, precio, cantidad });
   renderCarritoVenta();
 }
 
@@ -1140,7 +1306,7 @@ function renderCarritoVenta() {
       name.textContent = item.nombre;
       const meta = document.createElement('div');
       meta.className = 'sales-cart-meta';
-      meta.textContent = `${item.cantidad} × S/ ${item.precio.toFixed(2)}`;
+      meta.textContent = `${item.cantidad} × S/ ${item.precio.toFixed(2)} (${item.tipo_precio})`;
       info.append(name, meta);
 
       const action = document.createElement('div');
@@ -1164,11 +1330,12 @@ function renderCarritoVenta() {
 }
 
 function actualizarResumenVenta() {
-  const subtotalCentimos = carritoVenta.reduce((total, item) => total + Math.round(item.precio * item.cantidad * 100), 0);
-  const igvCentimos = Math.round(subtotalCentimos * 18 / 100);
+  const totalCentimos = carritoVenta.reduce((total, item) => total + Math.round(item.precio * item.cantidad * 100), 0);
+  const subtotalCentimos = Math.round(totalCentimos * 100 / 118);
+  const igvCentimos = totalCentimos - subtotalCentimos;
   document.getElementById('venta-subtotal').textContent = `S/ ${(subtotalCentimos / 100).toFixed(2)}`;
   document.getElementById('venta-igv').textContent = `S/ ${(igvCentimos / 100).toFixed(2)}`;
-  document.getElementById('venta-total').textContent = `S/ ${((subtotalCentimos + igvCentimos) / 100).toFixed(2)}`;
+  document.getElementById('venta-total').textContent = `S/ ${(totalCentimos / 100).toFixed(2)}`;
   document.getElementById('venta-grupo-vencimiento').style.display =
     document.getElementById('venta-condicion').value === 'credito' ? 'flex' : 'none';
 }
@@ -1276,7 +1443,15 @@ async function registrarClienteVenta(identity, boton) {
   }
 }
 
-async function emitirVentaDesdePagina() {
+function abrirConfirmacionVenta() {
+  if (!document.getElementById('venta-cliente').value) return toast('Selecciona un cliente', 'error');
+  if (carritoVenta.length === 0) return toast('Agrega al menos un producto', 'error');
+  abrirModal('modal-confirmar-venta');
+}
+
+async function procesarVentaConfirmada(imprimir) {
+  cerrarModal('modal-confirmar-venta');
+  const formatoImpresion = document.getElementById('formato-confirmacion').value;
   const clienteId = Number(document.getElementById('venta-cliente').value);
   const condicionPago = document.getElementById('venta-condicion').value;
   const fechaVencimiento = condicionPago === 'credito'
@@ -1297,13 +1472,19 @@ async function emitirVentaDesdePagina() {
         cliente_id: clienteId,
         condicion_pago: condicionPago,
         fecha_vencimiento: fechaVencimiento,
-        items: carritoVenta.map(item => ({ producto_id: item.producto_id, cantidad: item.cantidad })),
+        items: carritoVenta.map(item => ({ producto_id: item.producto_id, cantidad: item.cantidad, tipo_precio: item.tipo_precio })),
       }),
     });
     const result = await response.json();
-    if (!response.ok || !result.ok) return toast(result.error || 'No se pudo emitir la venta', 'error');
+    if (!response.ok || !result.ok) {
+      return toast(result.error || 'No se pudo emitir la venta', 'error');
+    }
 
     toast(`${tipoVentaActual === 'boleta' ? 'Boleta' : 'Factura'} ${result.numero} emitida por S/ ${result.total.toFixed(2)}`);
+    if (imprimir) {
+      window.location.href = `${API}/pdf/${result.id}?formato=${encodeURIComponent(formatoImpresion)}`;
+    } else {
+    }
     carritoVenta = [];
     document.getElementById('venta-cliente').value = '';
     document.getElementById('buscar-cliente-venta').value = '';
@@ -1329,7 +1510,7 @@ function renderProductos(lista) {
     <tr>
       <td><strong>${p.nombre}</strong><br><small style="color:var(--muted)">${p.descripcion||''}</small></td>
       <td>${p.categoria ? `<span class="badge badge-blue">${p.categoria}</span>` : '—'}</td>
-      <td class="mono">S/ ${p.precio.toFixed(2)}</td>
+      <td class="mono">U: S/ ${p.precio.toFixed(2)}<br><small>R: S/ ${p.precio_rebaja.toFixed(2)} | P: S/ ${p.precio_pase.toFixed(2)}<br>C: S/ ${Number(p.precio_compra || 0).toFixed(2)}</small></td>
       <td>${p.stock <= 5
         ? `<span class="badge badge-red">⚠️ ${p.stock}</span>`
         : `<span class="badge badge-green">${p.stock}</span>`}
@@ -1352,6 +1533,9 @@ function abrirModalProducto() {
   document.getElementById('producto-id').value = '';
   document.getElementById('producto-nombre').value = '';
   document.getElementById('producto-precio').value = '';
+  document.getElementById('producto-precio-rebaja').value = '';
+  document.getElementById('producto-precio-pase').value = '';
+  document.getElementById('producto-precio-compra').value = '';
   document.getElementById('producto-stock').value = '';
   document.getElementById('producto-cat').value = '';
   document.getElementById('producto-desc').value = '';
@@ -1366,6 +1550,9 @@ async function editarProducto(id) {
   document.getElementById('producto-id').value = p.id;
   document.getElementById('producto-nombre').value = p.nombre;
   document.getElementById('producto-precio').value = p.precio;
+  document.getElementById('producto-precio-rebaja').value = p.precio_rebaja;
+  document.getElementById('producto-precio-pase').value = p.precio_pase;
+  document.getElementById('producto-precio-compra').value = p.precio_compra || 0;
   document.getElementById('producto-stock').value = p.stock;
   document.getElementById('producto-cat').value = p.categoria || '';
   document.getElementById('producto-desc').value = p.descripcion || '';
@@ -1378,12 +1565,16 @@ async function guardarProducto() {
   const body = {
     nombre: document.getElementById('producto-nombre').value,
     precio: parseFloat(document.getElementById('producto-precio').value),
+    precio_rebaja: parseFloat(document.getElementById('producto-precio-rebaja').value),
+    precio_pase: parseFloat(document.getElementById('producto-precio-pase').value),
+    precio_compra: parseFloat(document.getElementById('producto-precio-compra').value) || 0,
     stock: parseInt(document.getElementById('producto-stock').value) || 0,
     categoria: document.getElementById('producto-cat').value,
     descripcion: document.getElementById('producto-desc').value,
   };
+
   if (!body.nombre) return toast('El nombre es obligatorio', 'error');
-  if (!body.precio || body.precio <= 0) return toast('El precio debe ser mayor a 0', 'error');
+  if ([body.precio, body.precio_rebaja, body.precio_pase].some(precio => !precio || precio <= 0)) return toast('Los tres precios deben ser mayores a 0', 'error');
   const url = id ? `${API}/productos/${id}` : `${API}/productos`;
   const method = id ? 'PUT' : 'POST';
   const r = await apiFetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
@@ -1427,6 +1618,7 @@ document.addEventListener('click', (e) => {
 async function cargarFacturas() {
   const r = await apiFetch(`${API}/comprobantes`);
   const d = await r.json();
+  if (!r.ok || !d.ok) return toast(d.error || 'No se pudieron cargar los comprobantes', 'error');
   facturasData = d.data || [];
   renderTabsComprobantes();
   aplicarFiltroTipo();
@@ -1450,8 +1642,14 @@ function seleccionarTipo(tipo) {
 
 function aplicarFiltroTipo() {
   const q = (document.getElementById('buscar-factura').value || '').toLowerCase();
+  const documentoQuery = q.replace(/\D/g, '');
   let lista = tipoActivo === 'todos' ? facturasData : facturasData.filter(f => f.tipo === tipoActivo);
-  if (q) lista = lista.filter(f => f.cliente_nombre.toLowerCase().includes(q));
+  if (q) lista = lista.filter(f => {
+    const cliente = String(f.cliente_nombre || '').toLowerCase();
+    const documento = String(f.cliente_documento || '').replace(/\D/g, '');
+    const comprobante = `${f.serie || ''}-${f.numero || ''}`.toLowerCase();
+    return cliente.includes(q) || comprobante.includes(q) || (documentoQuery && documento.includes(documentoQuery));
+  });
   document.getElementById('comprobantes-titulo').textContent = tipoActivo === 'todos'
     ? 'Todos los comprobantes'
     : TIPOS_COMPROBANTE[tipoActivo].label + 's';
@@ -1677,8 +1875,9 @@ async function abrirModalFactura(tipoPreseleccionado) {
   const selProd = document.getElementById('item-producto');
   selProd.innerHTML = '<option value="">-- Selecciona producto --</option>';
   (dp.data || []).forEach(p => {
-    selProd.innerHTML += `<option value="${p.id}" data-precio="${p.precio}" data-stock="${p.stock}">${p.nombre} — S/ ${p.precio.toFixed(2)} (stock: ${p.stock})</option>`;
+    selProd.innerHTML += `<option value="${p.id}" data-precio-unidad="${p.precio}" data-precio-rebaja="${p.precio_rebaja}" data-precio-pase="${p.precio_pase}" data-stock="${p.stock}">${p.nombre} — S/ ${p.precio.toFixed(2)} (stock: ${p.stock})</option>`;
   });
+  mostrarPreciosProducto();
 
   // Cargar comprobantes de referencia si aplica (facturas/boletas para vincular notas)
   if (cfg.necesita_ref) {
@@ -1701,8 +1900,20 @@ function onCambioCondicionPago() {
   document.getElementById('grupo-fecha-vencimiento').style.display = condicion === 'credito' ? 'block' : 'none';
 }
 
+function mostrarPreciosProducto() {
+  const sel = document.getElementById('item-producto');
+  const precios = document.getElementById('item-precios-disponibles');
+  const opt = sel?.options[sel.selectedIndex];
+  if (!precios || !opt || !sel.value) {
+    if (precios) precios.textContent = 'Unidad: S/ 0.00 · Rebaja: S/ 0.00 · Pase: S/ 0.00';
+    return;
+  }
+  precios.textContent = `Unidad: S/ ${Number(opt.dataset.precioUnidad).toFixed(2)} · Rebaja: S/ ${Number(opt.dataset.precioRebaja).toFixed(2)} · Pase: S/ ${Number(opt.dataset.precioPase).toFixed(2)}`;
+}
+
 function agregarItem() {
   const sel = document.getElementById('item-producto');
+  const tipoPrecio = document.getElementById('item-tipo-precio').value;
   const cantidad = parseInt(document.getElementById('item-cantidad').value);
   const opt = sel.options[sel.selectedIndex];
   if (!sel.value) return toast('Selecciona un producto', 'error');
@@ -1712,10 +1923,11 @@ function agregarItem() {
   if (CONFIG_TIPO[tipo]?.es_guia === false && tipo !== 'nota_devolucion' && tipo !== 'cotizacion' && tipo !== 'nota_pedido' && cantidad > stock) {
     return toast(`Stock insuficiente. Disponible: ${stock}`, 'error');
   }
-  const existe = itemsFactura.find(i => i.producto_id == sel.value);
+  const precio = parseFloat(opt.dataset[`precio${tipoPrecio[0].toUpperCase()}${tipoPrecio.slice(1)}`]);
+  const existe = itemsFactura.find(i => i.producto_id == sel.value && i.tipo_precio === tipoPrecio);
   if (existe) { existe.cantidad += cantidad; existe.subtotal = existe.precio * existe.cantidad; }
   else {
-    itemsFactura.push({ producto_id: sel.value, nombre: opt.text.split('—')[0].trim(), cantidad, precio: parseFloat(opt.dataset.precio), subtotal: parseFloat(opt.dataset.precio) * cantidad });
+    itemsFactura.push({ producto_id: sel.value, nombre: opt.text.split('—')[0].trim(), tipo_precio: tipoPrecio, cantidad, precio, subtotal: precio * cantidad });
   }
   renderItems();
 }
@@ -1729,7 +1941,7 @@ function renderItems() {
   if (itemsFactura.length === 0) { totDiv.style.display = 'none'; return; }
   itemsFactura.forEach((it, i) => {
     lista.innerHTML += `<div class="item-row">
-      <span>${it.nombre}</span>
+      <span>${it.nombre} <small>(${it.tipo_precio})</small></span>
       <span class="mono">${it.cantidad}</span>
       <span class="mono">S/ ${it.subtotal.toFixed(2)}</span>
       <button class="btn btn-danger btn-sm" onclick="quitarItem(${i})">✕</button>
@@ -1741,9 +1953,9 @@ function renderItems() {
   const cfg = CONFIG_TIPO[tipo] || {};
   const aplicaIgv = cfg.afecta_igv && condicion !== 'no_afecta';
 
-  const sub = itemsFactura.reduce((a,i) => a + i.subtotal, 0);
-  const igv = aplicaIgv ? sub * 0.18 : 0;
-  const total = sub + igv;
+  const total = itemsFactura.reduce((a,i) => a + i.subtotal, 0);
+  const sub = aplicaIgv ? total * 100 / 118 : total;
+  const igv = aplicaIgv ? total - sub : 0;
 
   document.getElementById('fila-igv').style.display = aplicaIgv ? 'flex' : 'none';
   document.getElementById('tot-sub').textContent = 'S/ ' + sub.toFixed(2);
@@ -1772,7 +1984,7 @@ async function emitirFactura() {
     cliente_id: parseInt(cliente_id),
     condicion_pago,
     fecha_vencimiento,
-    items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad })),
+    items: itemsFactura.map(i => ({ producto_id: parseInt(i.producto_id), cantidad: i.cantidad, tipo_precio: i.tipo_precio })),
   };
 
   if (cfg.es_guia) {
@@ -1793,14 +2005,21 @@ async function emitirFactura() {
 
   const r = await apiFetch(`${API}/comprobantes`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   const d = await r.json();
-  if (d.ok) { toast(`${TIPOS_COMPROBANTE[tipo].label} ${d.numero} emitida por S/ ${d.total.toFixed(2)}`); cerrarModal('modal-factura'); cargarFacturas(); }
-  else toast(d.error, 'error');
+  if (d.ok) {
+    toast(`${TIPOS_COMPROBANTE[tipo].label} ${d.numero} emitida por S/ ${d.total.toFixed(2)}`);
+    window.location.href = `${API}/pdf/${d.id}?formato=80mm`;
+    cerrarModal('modal-factura');
+    cargarFacturas();
+  } else {
+    toast(d.error, 'error');
+  }
 }
 
 async function verFactura(id) {
   facturaIdActual = id;
   const r = await apiFetch(`${API}/comprobantes/${id}`);
   const d = await r.json();
+  if (!r.ok || !d.ok || !d.data) return toast(d.error || 'No se pudo cargar el comprobante', 'error');
   const f = d.data;
   const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#4f8ef7' };
   const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
@@ -1893,7 +2112,7 @@ async function verFactura(id) {
             <td>${d.producto_nombre || d.descripcion_libre || '—'}</td>
             <td>${d.cantidad} ${d.unidad && d.unidad !== 'UND' ? d.unidad : ''}</td>
             <td style="text-align:right;">S/ ${d.precio_unitario.toFixed(2)}</td>
-            <td style="text-align:right;">S/ ${d.subtotal.toFixed(2)}</td>
+            <td style="text-align:right;">S/ ${(f.precios_incluyen_igv ? (d.precio_unitario * d.cantidad - d.descuento_item) : d.subtotal).toFixed(2)}</td>
           </tr>`).join('')}
         </tbody>
       </table>
@@ -1915,6 +2134,17 @@ async function verFactura(id) {
 function descargarPDF() {
   if (!facturaIdActual) return toast('No hay comprobante seleccionado', 'error');
   window.open(`${API}/pdf/${facturaIdActual}`, '_blank');
+}
+
+function descargarTicket80mm() {
+  if (!facturaIdActual) return toast('No hay comprobante seleccionado', 'error');
+  window.open(`${API}/pdf/${facturaIdActual}?formato=80mm`, '_blank');
+}
+
+function imprimirFormatoSeleccionado() {
+  if (!facturaIdActual) return toast('No hay comprobante seleccionado', 'error');
+  const formato = document.getElementById('formato-impresion').value;
+  window.location.href = `${API}/pdf/${facturaIdActual}?formato=${encodeURIComponent(formato)}`;
 }
 
 async function cambiarEstado(id, estado) {

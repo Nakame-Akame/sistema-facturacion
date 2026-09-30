@@ -25,14 +25,15 @@ const TRANSICIONES = {
  * @typedef {keyof typeof TIPOS} TipoComprobante
  * @typedef {'no_afecta' | 'contado' | 'credito'} CondicionPago
  * @typedef {import('better-sqlite3').Database} Database
- * @typedef {{ productoId: number | null, cantidad: number, cantidadEscalada: number, descuentoItemCentimos: number, descripcion: string | null, unidad: string }} ItemSolicitud
+ * @typedef {{ productoId: number | null, cantidad: number, cantidadEscalada: number, descuentoItemCentimos: number, descripcion: string | null, unidad: string, tipoPrecio: TipoPrecio }} ItemSolicitud
+ * @typedef {'unidad' | 'rebaja' | 'pase'} TipoPrecio
  * @typedef {{ tipo: TipoComprobante, clienteId: number, items: ItemSolicitud[], condicionPago: CondicionPago, fechaVencimiento: string | null, comprobanteReferenciaId: number | null, motivoReferencia: string | null, direccionPartida: string | null, direccionLlegada: string | null, transportista: string | null, fechaTraslado: string | null, descuentoCentimos: number }} SolicitudComprobante
- * @typedef {{ productoId: number | null, descripcion: string | null, cantidad: number, cantidadEscalada: number, unidad: string, precioCentimos: number, descuentoItemCentimos: number, subtotalCentimos: number, stock?: number }} DetalleComprobante
- * @typedef {{ detalles: DetalleComprobante[], subtotalCentimos: number }} PreparacionItems
+ * @typedef {{ productoId: number | null, descripcion: string | null, cantidad: number, cantidadEscalada: number, unidad: string, tipoPrecio: TipoPrecio, precioCentimos: number, descuentoItemCentimos: number, subtotalCentimos: number, stock?: number }} DetalleComprobante
+ * @typedef {{ detalles: DetalleComprobante[], subtotalCentimos: number, totalBrutoCentimos: number }} PreparacionItems
  * @typedef {{ cantidadEscalada: number, subtotalCentimos: number, descripcion: string | null, unidad: string | null }} DetalleOriginal
  * @typedef {{ id: number, tipo: string, estado: string, cliente_id: number, afecta_igv: number, descuento: number, igv: number, subtotal: number }} DatosComprobanteReferencia
  * @typedef {{ comprobante: DatosComprobanteReferencia, detallesPorProducto: Map<number, DetalleOriginal>, cantidadesAjustadas: Map<number, number>, subtotalesAjustadosCentimos: Map<number, number>, descuentoAjustadoCentimos: number, igvAjustadoCentimos: number, subtotalLineasCentimos: number }} ReferenciaComprobante
- * @typedef {{ id: number, nombre: string, precio?: number, stock: number, unidad: string }} ProductoFila
+ * @typedef {{ id: number, nombre: string, precio?: number, precio_rebaja?: number, precio_pase?: number, precio_compra?: number, stock: number, unidad: string }} ProductoFila
  * @typedef {{ id: number, serie: string, ultimo_numero: number }} SerieFila
  * @typedef {{ producto_id: number | null, cantidad: number }} MovimientoStockFila
  */
@@ -226,8 +227,13 @@ function validarSolicitud(payload) {
     const descuentoItemCentimos = necesitaReferencia ? 0 : aCentimos(requestItem.descuento_item ?? 0, 'El descuento por ítem');
     const descripcion = textoOpcional(requestItem.descripcion_libre, 'La descripción del ítem', !productoId);
     const unidad = textoOpcional(requestItem.unidad, 'La unidad') || 'UND';
+    const tipoPrecioRaw = requestItem.tipo_precio ?? 'unidad';
+    if (typeof tipoPrecioRaw !== 'string' || !['unidad', 'rebaja', 'pase'].includes(tipoPrecioRaw)) {
+      throw new ErrorValidacion(`El tipo de precio del ítem ${index + 1} no es válido`);
+    }
+    const tipoPrecio = /** @type {TipoPrecio} */ (tipoPrecioRaw);
 
-    return { productoId, cantidad, cantidadEscalada, descuentoItemCentimos, descripcion, unidad };
+    return { productoId, cantidad, cantidadEscalada, descuentoItemCentimos, descripcion, unidad, tipoPrecio };
   });
 
   return {
@@ -285,6 +291,7 @@ function prepararItemsNormales(db, solicitud, referencia) {
         descripcion: original.descripcion || producto.nombre,
         cantidad: cantidadNormalizada,
         unidad: original.unidad || producto.unidad,
+        tipoPrecio: /** @type {TipoPrecio} */ ('unidad'),
         precioCentimos: cantidad > 0
           ? prorratearCentimos(subtotalItemCentimos, ESCALA_CANTIDAD, cantidad)
           : 0,
@@ -298,10 +305,11 @@ function prepararItemsNormales(db, solicitud, referencia) {
         'El subtotal de la devolución'
       );
     }
-    return { detalles: detallesAjuste, subtotalCentimos: subtotalAjusteCentimos };
+    return { detalles: detallesAjuste, subtotalCentimos: subtotalAjusteCentimos, totalBrutoCentimos: subtotalAjusteCentimos };
   }
 
   let subtotalCentimos = 0;
+  let totalBrutoCentimos = 0;
   /** @type {DetalleComprobante[]} */
   const detalles = solicitud.items.map(item => {
     if (!item.productoId) {
@@ -311,13 +319,14 @@ function prepararItemsNormales(db, solicitud, referencia) {
         cantidad: item.cantidad,
         cantidadEscalada: item.cantidadEscalada,
         unidad: item.unidad,
+        tipoPrecio: item.tipoPrecio,
         precioCentimos: 0,
         descuentoItemCentimos: 0,
         subtotalCentimos: 0,
       };
     }
 
-    const producto = /** @type {ProductoFila | undefined} */ (db.prepare('SELECT id, nombre, precio, stock, unidad FROM productos WHERE id = ?')
+    const producto = /** @type {ProductoFila | undefined} */ (db.prepare('SELECT id, nombre, precio, precio_rebaja, precio_pase, precio_compra, stock, unidad FROM productos WHERE id = ?')
       .get(item.productoId));
     if (!producto) throw new ErrorValidacion(`Producto ${item.productoId} no encontrado`, 404);
 
@@ -325,7 +334,8 @@ function prepararItemsNormales(db, solicitud, referencia) {
     let descripcion;
     let descuentoItemCentimos;
     let unidad = producto.unidad;
-    precioCentimos = aCentimos(producto.precio, `El precio del producto ${producto.nombre}`);
+    const precios = { unidad: producto.precio, rebaja: producto.precio_rebaja, pase: producto.precio_pase };
+    precioCentimos = aCentimos(precios[item.tipoPrecio], `El precio ${item.tipoPrecio} del producto ${producto.nombre}`);
     descuentoItemCentimos = item.descuentoItemCentimos;
     if (descuentoItemCentimos > precioCentimos) {
       throw new ErrorValidacion(`El descuento supera el precio del producto ${producto.nombre}`);
@@ -333,7 +343,11 @@ function prepararItemsNormales(db, solicitud, referencia) {
     descripcion = producto.nombre;
 
     const precioNetoCentimos = precioCentimos - descuentoItemCentimos;
-    const subtotalItemCentimos = importePorCantidad(precioNetoCentimos, item.cantidadEscalada);
+    const subtotalItemCentimos = importePorCantidad(Math.round(precioNetoCentimos * 100 / 118), item.cantidadEscalada);
+    totalBrutoCentimos = validarCentimos(
+      totalBrutoCentimos + importePorCantidad(precioNetoCentimos, item.cantidadEscalada),
+      'El total de los ítems'
+    );
     subtotalCentimos = validarCentimos(subtotalCentimos + subtotalItemCentimos, 'El subtotal');
 
     return {
@@ -342,6 +356,7 @@ function prepararItemsNormales(db, solicitud, referencia) {
       cantidad: item.cantidad,
       cantidadEscalada: item.cantidadEscalada,
       unidad,
+      tipoPrecio: item.tipoPrecio,
       precioCentimos,
       descuentoItemCentimos,
       subtotalCentimos: subtotalItemCentimos,
@@ -349,7 +364,7 @@ function prepararItemsNormales(db, solicitud, referencia) {
     };
   });
 
-  return { detalles, subtotalCentimos };
+  return { detalles, subtotalCentimos, totalBrutoCentimos };
 }
 
 /** @param {Database} db @param {SolicitudComprobante} solicitud @returns {ReferenciaComprobante | null} */
@@ -470,7 +485,14 @@ function aplicarLimitesAjuste(solicitud, referencia, detalles, subtotalLineasCen
         subtotalLineasCentimos
       ))
       : 0;
-  const subtotalCentimos = validarCentimos(subtotalItemsCentimos - descuentoCentimos, 'El subtotal del ajuste');
+  const subtotalAjustadoAnteriorCentimos = [...referencia.subtotalesAjustadosCentimos.values()]
+    .reduce((sum, subtotal) => sum + subtotal, 0);
+  const subtotalCentimos = completaAjuste
+    ? validarCentimos(
+      aCentimos(referencia.comprobante.subtotal, 'El subtotal original') - subtotalAjustadoAnteriorCentimos,
+      'El subtotal del ajuste'
+    )
+    : validarCentimos(subtotalItemsCentimos - descuentoCentimos, 'El subtotal del ajuste');
   if (subtotalCentimos < 0) throw new ErrorValidacion('El descuento supera el subtotal del ajuste');
 
   const igvRestante = Math.max(
@@ -498,7 +520,7 @@ function crearComprobante(db, payload) {
     if (!cliente) throw new ErrorValidacion('Cliente no encontrado', 404);
 
     const referencia = prepararReferencia(db, solicitud);
-    const { detalles, subtotalCentimos: subtotalLineasCentimos } = prepararItemsNormales(
+    const { detalles, subtotalCentimos: subtotalLineasCentimos, totalBrutoCentimos } = prepararItemsNormales(
       db,
       solicitud,
       referencia
@@ -523,13 +545,17 @@ function crearComprobante(db, payload) {
       afectaIgv = referencia.comprobante.afecta_igv !== 0;
       condicionPago = afectaIgv ? 'contado' : 'no_afecta';
     } else {
-      if (descuentoCentimos > subtotalCentimos) {
+      if (descuentoCentimos > totalBrutoCentimos) {
         throw new ErrorValidacion('El descuento no puede superar el subtotal');
       }
-      subtotalCentimos = validarCentimos(subtotalCentimos - descuentoCentimos, 'El subtotal');
-      igvCentimos = TIPOS[solicitud.tipo].afecta_igv && condicionPago !== 'no_afecta'
-        ? Math.round(subtotalCentimos * 18 / 100)
-        : 0;
+      const brutoConDescuento = totalBrutoCentimos - descuentoCentimos;
+      if (TIPOS[solicitud.tipo].afecta_igv && condicionPago !== 'no_afecta') {
+        subtotalCentimos = Math.round(brutoConDescuento * 100 / 118);
+        igvCentimos = brutoConDescuento - subtotalCentimos;
+      } else {
+        subtotalCentimos = brutoConDescuento;
+        igvCentimos = 0;
+      }
     }
 
     validarCentimos(igvCentimos, 'El IGV');
@@ -552,8 +578,8 @@ function crearComprobante(db, payload) {
         tipo, serie, numero, cliente_id, condicion_pago, fecha_vencimiento,
         comprobante_ref_id, motivo_ref, direccion_partida, direccion_llegada,
         transportista, fecha_traslado, subtotal, igv, descuento, total,
-        afecta_igv, estado
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        afecta_igv, precios_incluyen_igv, estado
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       solicitud.tipo,
       serie.serie,
@@ -572,6 +598,7 @@ function crearComprobante(db, payload) {
       desdeCentimos(descuentoCentimos),
       desdeCentimos(totalCentimos),
       afectaIgv ? 1 : 0,
+      1,
       estadoInicial
     );
 
@@ -579,14 +606,15 @@ function crearComprobante(db, payload) {
       db.prepare(`
         INSERT INTO detalle_comprobante
           (comprobante_id, producto_id, descripcion_libre, cantidad, unidad,
-           precio_unitario, descuento_item, subtotal)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            tipo_precio, precio_unitario, descuento_item, subtotal)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         resultado.lastInsertRowid,
         detalle.productoId,
         detalle.descripcion,
         detalle.cantidad,
         detalle.unidad,
+        detalle.tipoPrecio,
         desdeCentimos(detalle.precioCentimos),
         desdeCentimos(detalle.descuentoItemCentimos),
         desdeCentimos(detalle.subtotalCentimos)

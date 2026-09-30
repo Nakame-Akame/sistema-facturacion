@@ -114,12 +114,12 @@ test('creates a comprobante using server-calculated totals', async () => {
   const result = await response.json();
 
   assert.equal(response.status, 201);
-  assert.equal(result.subtotal, 100);
-  assert.equal(result.igv, 18);
-  assert.equal(result.total, 118);
+  assert.equal(result.subtotal, 84.75);
+  assert.equal(result.igv, 15.25);
+  assert.equal(result.total, 100);
 
   const saved = db.prepare('SELECT total FROM comprobantes WHERE id = ?').get(result.id);
-  assert.equal(saved.total, 118);
+  assert.equal(saved.total, 100);
   const savedItem = db.prepare('SELECT precio_unitario FROM detalle_comprobante WHERE comprobante_id = ?').get(result.id);
   assert.equal(savedItem.precio_unitario, 100);
   assert.equal(db.prepare('SELECT stock FROM productos WHERE id = 1').get().stock, 9);
@@ -139,6 +139,16 @@ test('creates a comprobante using server-calculated totals', async () => {
   assert.equal(pdf.status, 200);
   assert.match(pdf.headers.get('content-type'), /application\/pdf/);
   assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+
+  for (const formato of ['80mm', '58mm']) {
+    const ticket = await fetch(`${api}/api/pdf/${result.id}?formato=${formato}`, {
+      headers: { Cookie: cookie },
+    });
+    assert.equal(ticket.status, 200);
+    assert.match(ticket.headers.get('content-type'), /application\/pdf/);
+    assert.equal(Buffer.from(await ticket.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+    assert.match(ticket.headers.get('content-disposition'), new RegExp(`ticket-${formato}`));
+  }
 });
 
 test('consults DNI and RUC through the authenticated server-side identity endpoint', async () => {
@@ -258,7 +268,7 @@ test('caps returns to original sold quantity and reverses stock only once', asyn
   });
   const returned = await validReturn.json();
   assert.equal(validReturn.status, 201);
-  assert.equal(returned.total, 118);
+  assert.equal(returned.total, 100);
   assert.equal(db.prepare('SELECT stock FROM productos WHERE id = 1').get().stock, 10);
 
   const duplicateReturn = await fetch(`${api}/api/comprobantes`, {
@@ -333,7 +343,7 @@ test('partial refunds proration preserves the original total to the cent', async
   });
   const sale = await saleResponse.json();
   assert.equal(saleResponse.status, 201);
-  assert.equal(sale.total, 0.34);
+  assert.equal(sale.total, 0.29);
 
   const refundTotals = [];
   for (let index = 0; index < 3; index += 1) {
@@ -353,7 +363,7 @@ test('partial refunds proration preserves the original total to the cent', async
     refundTotals.push(refund.total);
   }
 
-  assert.deepEqual(refundTotals, [0.12, 0.12, 0.1]);
+  assert.deepEqual(refundTotals, [0.09, 0.09, 0.11]);
   assert.equal(Number(refundTotals.reduce((sum, amount) => sum + amount, 0).toFixed(2)), sale.total);
   assert.equal(db.prepare('SELECT stock FROM productos WHERE id = 3').get().stock, 3);
 });
@@ -382,9 +392,46 @@ test('catalog prices with decimal fractions round half-up to cents', async () =>
   const result = await response.json();
 
   assert.equal(response.status, 201);
-  assert.equal(result.subtotal, 1.01);
-  assert.equal(result.igv, 0.18);
-  assert.equal(result.total, 1.19);
+  assert.equal(result.subtotal, 0.86);
+  assert.equal(result.igv, 0.15);
+  assert.equal(result.total, 1.01);
+});
+
+test('sales use the selected product price type', async () => {
+  const { cookie } = await login();
+  const createdProduct = await fetch(`${api}/api/productos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({
+      nombre: 'Producto con precios por tipo',
+      precio: 100,
+      precio_rebaja: 80,
+      precio_pase: 60,
+      stock: 2,
+    }),
+  });
+  const createdProductResult = await createdProduct.json();
+  assert.equal(createdProduct.status, 201);
+
+  const response = await fetch(`${api}/api/comprobantes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({
+      tipo: 'boleta',
+      cliente_id: 1,
+      items: [{ producto_id: createdProductResult.id, cantidad: 1, tipo_precio: 'rebaja' }],
+    }),
+  });
+  const result = await response.json();
+  const detalle = db.prepare('SELECT precio_unitario, tipo_precio FROM detalle_comprobante WHERE comprobante_id = ?')
+    .get(result.id);
+
+  assert.equal(response.status, 201);
+  assert.equal(result.subtotal, 67.8);
+  assert.equal(result.igv, 12.2);
+  assert.equal(result.total, 80);
+  assert.equal(detalle.precio_unitario, 80);
+  assert.equal(detalle.tipo_precio, 'rebaja');
 });
 
 test('concurrent sales cannot consume the same stock or reserve duplicate numbers', async () => {
@@ -473,4 +520,37 @@ test('seller can perform allowed work but receives 403 for restricted actions', 
     }),
   });
   assert.equal(refund.status, 403);
+});
+
+test('generates a PDF for a long document with many product rows', async () => {
+  const { cookie } = await login();
+  const productResponse = await fetch(`${api}/api/productos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({
+      nombre: 'Producto con una descripción extraordinariamente larga para verificar el salto de línea en impresión térmica',
+      precio: 10,
+      precio_rebaja: 9,
+      precio_pase: 8,
+      stock: 30,
+    }),
+  });
+  const product = await productResponse.json();
+  assert.equal(productResponse.status, 201);
+
+  const saleResponse = await fetch(`${api}/api/comprobantes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({
+      tipo: 'boleta',
+      cliente_id: 1,
+      items: Array.from({ length: 20 }, () => ({ producto_id: product.id, cantidad: 1 })),
+    }),
+  });
+  const sale = await saleResponse.json();
+  assert.equal(saleResponse.status, 201);
+
+  const pdf = await fetch(`${api}/api/pdf/${sale.id}?formato=80mm`, { headers: { Cookie: cookie } });
+  assert.equal(pdf.status, 200);
+  assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
 });
