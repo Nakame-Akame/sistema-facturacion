@@ -1,0 +1,77 @@
+<div class="page" id="page-reportes">
+    <div class="stats-grid stats-grid-reports">
+      <div class="stat-card green">
+        <div class="stat-label">Base imponible del mes</div>
+        <div class="stat-value green mono" id="rep-subtotal">S/ 0.00</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="stat-label">IGV del mes (18%)</div>
+        <div class="stat-value blue mono" id="rep-igv">S/ 0.00</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">Total con IGV</div>
+        <div class="stat-value yellow mono" id="rep-total">S/ 0.00</div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid report-grid">
+      <div class="table-card">
+        <div class="table-header"><h2>📅 Ventas por día (30 días)</h2></div>
+        <table>
+          <thead><tr><th>Día</th><th>Facturas</th><th>Total</th></tr></thead>
+          <tbody id="rep-dias-body"><tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><h2>🏷️ Ventas por categoría</h2></div>
+        <table>
+          <thead><tr><th>Categoría</th><th>Unidades</th><th>Ingresos</th></tr></thead>
+          <tbody id="rep-cat-body"><tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="table-card panel-spacing">
+      <div class="table-header"><h2>📊 Estado de facturas</h2></div>
+      <table>
+        <thead><tr><th>Estado</th><th>Cantidad</th><th>Monto total</th></tr></thead>
+        <tbody id="rep-estados-body"><tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr></tbody>
+      </table>
+    </div>
+    <section class="table-card panel-spacing receivables-report">
+      <div class="table-header"><div><h2>Cuentas por cobrar</h2><p class="sales-subtitle">Saldos netos de facturas y boletas a crédito, con vencimientos.</p></div></div>
+      <div class="purchase-report-filters">
+        <label>Desde<input id="reporte-cobrar-desde" type="date"></label>
+        <label>Hasta<input id="reporte-cobrar-hasta" type="date"></label>
+        <button class="btn btn-primary" type="button" onclick="cargarReporteCuentasCobrar(true)">Consultar</button>
+        <button class="btn" type="button" onclick="descargarCuentasCobrarExcel()">Descargar Excel</button>
+      </div>
+      <div id="reporte-cobrar-resumen" class="purchase-report-summary" aria-live="polite">Selecciona un periodo.</div>
+      <table><thead><tr><th>Cliente</th><th>Comprobante</th><th>Vencimiento</th><th>Días de mora</th><th>Importe</th><th>Abonado</th><th>Saldo</th></tr></thead><tbody id="reporte-cobrar-body"><tr><td colspan="7"><div class="empty"><p>Sin datos</p></div></td></tr></tbody></table>
+    </section>
+    <section class="table-card panel-spacing purchase-report">
+      <div class="table-header"><div><h2>Recepciones de compra</h2><p class="sales-subtitle">Unidades recibidas agrupadas por proveedor y producto.</p></div></div>
+      <div class="purchase-report-filters">
+        <label>Desde<input id="reporte-compras-desde" type="date"></label>
+        <label>Hasta<input id="reporte-compras-hasta" type="date"></label>
+        <button class="btn btn-primary" type="button" onclick="cargarReporteCompras(true)">Consultar</button>
+        <button class="btn" type="button" onclick="descargarComprasExcel()">Descargar Excel</button>
+      </div>
+      <div class="purchase-report-summary" id="reporte-compras-resumen" aria-live="polite">Selecciona un periodo.</div>
+      <div class="dashboard-grid report-grid">
+        <div class="table-card">
+          <div class="table-header"><h3>Por proveedor</h3></div>
+          <table><thead><tr><th>Proveedor</th><th>Documentos</th><th>Unidades</th></tr></thead><tbody id="reporte-compras-proveedores"><tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr></tbody></table>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><h3>Por producto</h3></div>
+          <table><thead><tr><th>Producto</th><th>Documentos</th><th>Unidades</th></tr></thead><tbody id="reporte-compras-productos"><tr><td colspan="3"><div class="empty"><p>Sin datos</p></div></td></tr></tbody></table>
+        </div>
+      </div>
+      <div class="purchase-report-payables">
+        <div class="table-header"><div><h3>Cuentas por pagar estimadas</h3><p class="sales-subtitle">Solo compras a crédito no pagadas; el saldo usa las líneas recibidas.</p></div></div>
+        <div class="purchase-report-summary" id="reporte-cuentas-resumen">Sin datos.</div>
+        <table><thead><tr><th>Proveedor</th><th>Documentos</th><th>Abonado (S/)</th><th>Saldo estimado (S/)</th></tr></thead><tbody id="reporte-cuentas-proveedores"><tr><td colspan="4"><div class="empty"><p>Sin datos</p></div></td></tr></tbody></table>
+      </div>
+    </section>
+  </div>

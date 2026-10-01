@@ -2,7 +2,13 @@ const express  = require('express');
 const router   = express.Router();
 const bcrypt   = require('bcryptjs');
 const db       = require('../database');
-const { ROLES_VALIDOS, requierePermiso } = require('../middleware/permisos');
+const {
+  GRUPOS_PERMISOS,
+  PERMISOS_DISPONIBLES,
+  PERMISOS_POR_ROL,
+  ROLES_VALIDOS,
+  requierePermiso,
+} = require('../middleware/permisos');
 
 // Crear tabla de usuarios si no existe
 db.exec(`
@@ -17,8 +23,25 @@ db.exec(`
 `);
 
 const columnasUsuarios = db.pragma('table_info(usuarios)');
+if (!columnasUsuarios.some(columna => columna.name === 'permisos')) {
+  db.exec('ALTER TABLE usuarios ADD COLUMN permisos TEXT');
+}
 if (!columnasUsuarios.some(columna => columna.name === 'created_at')) {
   db.exec('ALTER TABLE usuarios ADD COLUMN created_at DATETIME');
+}
+
+function permisosDeUsuario(usuario) {
+  if (usuario.rol === 'admin') return ['*'];
+  if (typeof usuario.permisos !== 'string') return undefined;
+  try {
+    const permisos = JSON.parse(usuario.permisos);
+    if (Array.isArray(permisos) && permisos.every(permiso => PERMISOS_DISPONIBLES.has(permiso))) {
+      return [...new Set(permisos)];
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 // POST - Login
@@ -44,6 +67,7 @@ router.post('/login', (req, res) => {
         nombre: usuario.nombre,
         email: usuario.email,
         rol: usuario.rol,
+        permisos: permisosDeUsuario(usuario) ?? PERMISOS_POR_ROL[usuario.rol] ?? [],
       };
       req.session.save(saveError => {
         if (saveError) return res.status(500).json({ ok: false, error: 'No se pudo iniciar sesión' });
@@ -88,15 +112,24 @@ router.post('/usuarios', requierePermiso('usuarios:administrar'), (req, res) => 
     if (!ROLES_VALIDOS.includes(rol))
       return res.status(400).json({ ok: false, error: 'Rol inválido' });
 
+    const permisosSolicitados = req.body.permisos;
+    if (rol !== 'admin' && permisosSolicitados !== undefined &&
+        (!Array.isArray(permisosSolicitados) || permisosSolicitados.some(permiso => !PERMISOS_DISPONIBLES.has(permiso)))) {
+      return res.status(400).json({ ok: false, error: 'La selección de permisos contiene opciones inválidas' });
+    }
+    const permisos = rol === 'admin'
+      ? ['*']
+      : [...new Set(permisosSolicitados ?? PERMISOS_POR_ROL[rol] ?? [])];
+
     const existe = db.prepare('SELECT id FROM usuarios WHERE email = ?').get(email);
     if (existe)
       return res.status(400).json({ ok: false, error: 'Ya existe un usuario con ese email' });
 
     const hash = bcrypt.hashSync(password, 12);
     const result = db.prepare(`
-      INSERT INTO usuarios (nombre, email, password, rol)
-      VALUES (?, ?, ?, ?)
-    `).run(nombre, email, hash, rol || 'vendedor');
+      INSERT INTO usuarios (nombre, email, password, rol, permisos)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(nombre.trim(), email, hash, rol, JSON.stringify(permisos));
 
     res.status(201).json({ ok: true, id: result.lastInsertRowid, mensaje: 'Usuario creado' });
   } catch (err) {
@@ -108,12 +141,23 @@ router.post('/usuarios', requierePermiso('usuarios:administrar'), (req, res) => 
 router.get('/usuarios', requierePermiso('usuarios:administrar'), (req, res) => {
   try {
     const usuarios = db.prepare(`
-      SELECT id, nombre, email, rol, created_at FROM usuarios ORDER BY nombre ASC
+      SELECT id, nombre, email, rol, permisos, created_at FROM usuarios ORDER BY nombre ASC
     `).all();
-    res.json({ ok: true, data: usuarios });
+    res.json({ ok: true, data: usuarios.map(usuario => ({
+      ...usuario,
+      permisos: permisosDeUsuario(usuario) ?? PERMISOS_POR_ROL[usuario.rol] ?? [],
+    })) });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'No se pudo listar usuarios' });
   }
+});
+
+router.get('/usuarios/permisos', requierePermiso('usuarios:administrar'), (_req, res) => {
+  res.json({
+    ok: true,
+    data: GRUPOS_PERMISOS,
+    permisos_predeterminados_vendedor: PERMISOS_POR_ROL.vendedor,
+  });
 });
 
 // DELETE - Eliminar usuario (solo admin, no puede eliminarse a sí mismo)

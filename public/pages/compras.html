@@ -1,0 +1,76 @@
+<div class="page" id="page-compras">
+    <div class="sales-page-head">
+      <div><p class="eyebrow">DOCUMENTOS RECIBIDOS</p><h2>Facturas y guías de compra</h2></div>
+    </div>
+    <section class="table-card panel-spacing supplier-admin">
+      <div class="table-header"><div><h2>Proveedores</h2><p class="sales-subtitle">Administra el directorio usado al registrar compras.</p></div></div>
+      <form id="form-proveedor" onsubmit="guardarProveedor(event)">
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <div class="form-group"><label for="proveedor-documento">RUC / documento *</label><input id="proveedor-documento" name="documento" required maxlength="30"></div>
+          <div class="form-group"><label for="proveedor-razon">Razón social *</label><input id="proveedor-razon" name="razon_social" required maxlength="200"></div>
+          <div class="form-group"><label for="proveedor-telefono">Teléfono</label><input id="proveedor-telefono" name="telefono" maxlength="50"></div>
+          <div class="form-group"><label for="proveedor-email">Correo</label><input id="proveedor-email" name="email" type="email" maxlength="254"></div>
+          <div class="form-group full"><label for="proveedor-direccion">Dirección</label><input id="proveedor-direccion" name="direccion" maxlength="300"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar proveedor</button><button class="btn" type="button" onclick="limpiarFormularioProveedor()">Limpiar</button></div>
+      </form>
+      <table><thead><tr><th>Documento</th><th>Razón social</th><th>Contacto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="proveedores-body"><tr><td colspan="5"><div class="empty"><p>Cargando proveedores...</p></div></td></tr></tbody></table>
+    </section>
+    <section class="table-card panel-spacing">
+      <div class="table-header"><div><h2>Registrar documento</h2><p class="sales-subtitle">Guarda los datos del proveedor y adjunta el PDF o imagen.</p></div></div>
+      <form id="form-compra" onsubmit="guardarCompra(event)">
+        <div class="purchase-rate-panel">
+          <div class="purchase-rate-field"><label for="compra-moneda">Moneda *</label><select id="compra-moneda" name="moneda"><option value="PEN">PEN (S/)</option><option value="USD">USD ($)</option></select></div>
+          <div class="purchase-rate-field"><label for="compra-tipo-cambio">Tipo de cambio aplicado</label><input id="compra-tipo-cambio" type="number" name="tipo_cambio" min="0" step="0.0001" readonly></div>
+          <button class="purchase-sunat-button" type="button" onclick="actualizarTipoCambio()"><span>◈</span> SUNAT</button>
+          <div class="purchase-rate-meta"><span id="compra-cambio-fecha">Consultando SUNAT...</span><small>Compra <b id="compra-cambio-compra">--</b> · Venta <b id="compra-cambio-venta">--</b></small></div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group full"><label for="compra-proveedor-select">Seleccionar proveedor del catálogo</label><select id="compra-proveedor-select" onchange="seleccionarProveedor()"><option value="">Ingreso manual</option></select></div>
+          <div class="form-group"><label>Tipo *</label><select name="tipo" required><option value="factura">Factura</option><option value="guia">Guía de remisión</option></select></div>
+          <div class="form-group"><label>Condición de pago</label><select name="condicion_pago"><option value="contado">Contado</option><option value="credito">Crédito</option></select></div>
+          <div class="form-group"><label>Serie</label><input name="serie" placeholder="F001"></div>
+          <div class="form-group"><label>Número</label><input name="numero" placeholder="00001234"></div>
+          <div class="form-group"><label>Orden de compra</label><input name="orden_compra"></div>
+          <div class="form-group"><label>Estado</label><select name="estado"><option value="pendiente">Pendiente</option><option value="pagado">Pagado</option><option value="entregado">Entregado</option></select></div>
+          <div class="form-group"><label>Fecha de factura</label><input type="date" name="fecha_factura"></div>
+          <div class="form-group"><label>Fecha de ingreso</label><input type="date" name="fecha_ingreso"></div>
+          <div class="form-group"><label>Fecha de pago</label><input type="date" name="fecha_pago"></div>
+          <div class="form-group"><label>Porcentaje</label><input type="number" name="porcentaje" min="0" max="100" step="0.01"></div>
+          <div class="form-group"><label>N° documento proveedor *</label><input name="proveedor_documento" required></div>
+          <div class="form-group"><label>Razón social *</label><input name="proveedor_razon_social" required></div>
+          <div class="form-group"><label>Dirección</label><input name="proveedor_direccion"></div>
+          <div class="purchase-items-group full">
+            <div class="purchase-items-heading"><strong>Productos recibidos</strong><button class="btn btn-sm" type="button" onclick="agregarItemCompra()">Añadir producto</button></div>
+            <div id="compra-items-list" class="purchase-items-list"></div>
+          </div>
+          <div class="form-group"><label for="compra-almacen-id">Almacén de ingreso</label><select id="compra-almacen-id" name="almacen_id"><option value="">Almacén predeterminado</option></select></div>
+          <div class="purchase-upload-grid full">
+            <div class="purchase-upload-card">
+              <div class="purchase-upload-heading"><span class="purchase-upload-icon">▤</span><div><strong>Factura de compra</strong><small>PDF o imagen del comprobante</small></div></div>
+              <label class="purchase-file-input"><span>Seleccionar factura</span><input type="file" name="archivo_factura" accept="application/pdf,image/jpeg,image/png"></label>
+            </div>
+            <div class="purchase-upload-card">
+              <div class="purchase-upload-heading"><span class="purchase-upload-icon">↗</span><div><strong>Guía de remisión</strong><small>Documento de traslado asociado</small></div></div>
+              <label class="purchase-file-input"><span>Seleccionar guía</span><input type="file" name="archivo_guia" accept="application/pdf,image/jpeg,image/png"></label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar documento</button></div>
+      </form>
+    </section>
+    <section class="table-card">
+      <div class="table-header"><h2>Historial de compras</h2></div>
+      <div class="purchase-history-filters">
+        <label>Proveedor o documento<input id="compras-buscar" type="search" maxlength="100" placeholder="Buscar proveedor, RUC o serie"></label>
+        <label>Condición<select id="compras-condicion"><option value="">Todas</option><option value="contado">Contado</option><option value="credito">Crédito</option></select></label>
+        <label>Estado<select id="compras-estado"><option value="">Todos</option><option value="pendiente">Pendiente</option><option value="parcial">Parcial</option><option value="pagado">Pagado</option><option value="entregado">Entregado</option><option value="anulado">Anulado</option></select></label>
+        <label>Desde<input id="compras-desde" type="date"></label>
+        <label>Hasta<input id="compras-hasta" type="date"></label>
+        <button class="btn btn-primary" type="button" onclick="cargarCompras(true)">Filtrar</button>
+        <button class="btn" type="button" onclick="limpiarFiltrosCompras()">Limpiar</button>
+      </div>
+      <table><thead><tr><th>Tipo</th><th>Documento</th><th>Proveedor</th><th>Productos recibidos</th><th>Fecha</th><th>Estado</th><th>Pago</th><th>Pagos registrados</th><th>Saldo estimado</th><th>Archivo</th></tr></thead><tbody id="compras-body"><tr><td colspan="10"><div class="empty"><p>Cargando documentos...</p></div></td></tr></tbody></table>
+    </section>
+  </div>

@@ -1,0 +1,17 @@
+<div class="page" id="page-clientes">
+    <div class="table-card">
+      <div class="table-header">
+        <h2>Clientes registrados</h2>
+        <div class="table-tools">
+          <div class="search-bar"><input type="text" id="buscar-cliente" placeholder="Buscar..." oninput="filtrarClientes()"></div>
+          <button class="btn btn-primary" onclick="abrirModalCliente()">+ Nuevo Cliente</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>RUC/DNI</th><th>Email</th><th>Teléfono</th><th>Acciones</th></tr></thead>
+        <tbody id="clientes-body">
+          <tr><td colspan="5"><div class="empty"><span class="icon">👥</span><p>No hay clientes aún</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>

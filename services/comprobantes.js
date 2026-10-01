@@ -11,8 +11,8 @@ const TIPOS = {
 
 /** @type {Record<TipoComprobante, Record<string, string[]>>} */
 const TRANSICIONES = {
-  factura: { emitido: ['pagado', 'anulado'], pagado: ['anulado'] },
-  boleta: { emitido: ['pagado', 'anulado'], pagado: ['anulado'] },
+  factura: { emitido: ['pagado', 'anulado'], parcial: ['pagado'], pagado: ['anulado'] },
+  boleta: { emitido: ['pagado', 'anulado'], parcial: ['pagado'], pagado: ['anulado'] },
   nota_pedido: { pendiente: ['atendido', 'anulado'], atendido: ['anulado'] },
   guia_remision: { emitido: ['anulado'] },
   cotizacion: { borrador: ['enviado', 'aprobado', 'rechazado'], enviado: ['aprobado', 'rechazado'] },
@@ -665,6 +665,12 @@ function cambiarEstadoComprobante(db, comprobanteId, nuevoEstado) {
     }
 
     if (nuevoEstado === 'anulado' && ['factura', 'boleta'].includes(comprobante.tipo)) {
+      const pagosRegistrados = /** @type {{ total: number } | undefined} */ (db.prepare(
+        'SELECT COUNT(*) AS total FROM pagos_comprobante WHERE comprobante_id = ?'
+      ).get(id));
+      if (pagosRegistrados?.total > 0) {
+        throw new ErrorValidacion('No se puede anular una venta con cobros registrados', 409);
+      }
       const ajustesActivos = db.prepare(`
         SELECT COUNT(*) AS total FROM comprobantes
         WHERE comprobante_ref_id = ?

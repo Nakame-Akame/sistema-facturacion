@@ -274,6 +274,10 @@ input::placeholder { color: #a3aca1; }
 .confirmar-actions .btn { min-width: 150px; }
 .confirmar-formato { display: grid; gap: 6px; margin-top: 18px; color: var(--muted); font-size: 10px; font-weight: 700; text-align: left; }
 .confirmar-formato select { min-height: 36px; font-size: 11px; }
+.payment-history { margin-top: 16px; padding: 12px; border: 1px solid #e0e7de; border-radius: 8px; background: #f8faf6; }
+.payment-history .fp-table { margin-top: 8px; }
+.payment-history-totals { display: flex; justify-content: flex-end; gap: 18px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+.payment-history-totals strong { color: var(--text); }
 .modal-close { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 5px; font-size: 17px; }
 .modal-close:hover { background: #edf0e9; }
 .print-format-control { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 10px; font-weight: 700; }
@@ -285,6 +289,46 @@ input::placeholder { color: #a3aca1; }
 }
 #page-compras .sales-page-head h2 { font-size: 26px; }
 #page-compras .table-card { overflow: hidden; }
+#page-compras .supplier-admin #form-proveedor { padding: 0 20px 12px; }
+#page-usuarios #form-usuario { padding: 0 20px 16px; }
+#page-usuarios #form-usuario .user-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#page-usuarios #form-usuario .modal-footer { justify-content: flex-end; padding: 12px 0; }
+#page-usuarios .user-permissions-panel { margin: 4px 20px 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+#page-usuarios .user-permissions-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin-bottom: 12px; color: var(--text); font-size: 12px; }
+#page-usuarios .user-permissions-heading span,
+#page-usuarios .user-admin-notice { color: var(--muted); font-size: 11px; }
+#page-usuarios .user-permissions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 10px; }
+#page-usuarios .user-permission-group { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 7px; }
+#page-usuarios .user-permission-group legend { padding: 0 5px; color: var(--accent); font-size: 10px; font-weight: 700; }
+#page-usuarios .user-permission-option { display: flex; align-items: flex-start; gap: 7px; margin: 7px 0; color: var(--text); font-size: 11px; text-transform: none; letter-spacing: 0; }
+#page-usuarios .user-permission-option input { flex: 0 0 auto; margin-top: 1px; accent-color: var(--accent); }
+#page-usuarios .user-admin-notice { margin: 0 20px 12px; }
+#page-usuarios table { min-width: 680px; }
+#page-compras .supplier-admin #form-proveedor .form-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+#page-compras .supplier-admin #form-proveedor .modal-footer { justify-content: flex-end; padding: 12px 0; }
+#page-compras .supplier-admin table { min-width: 680px; }
+#page-compras .purchase-items-group { display: grid; grid-column: 1 / -1; gap: 10px; }
+#page-compras .purchase-items-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#page-compras .purchase-items-heading strong { color: var(--text); font-size: 12px; }
+#page-compras .purchase-items-list { display: grid; gap: 8px; }
+#page-compras .purchase-item-row { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(100px, .8fr) minmax(140px, 1fr) auto; align-items: end; gap: 10px; padding: 10px; border: 1px solid #e2e9df; border-radius: 8px; background: #fff; }
+#page-compras .purchase-item-field { display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 700; }
+#page-compras .purchase-item-row button { min-height: 36px; }
+#page-reportes .purchase-report-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; padding: 0 20px 16px; }
+#page-reportes .purchase-report-filters label { display: grid; gap: 5px; min-width: 170px; color: var(--muted); font-size: 10px; font-weight: 700; }
+#page-reportes .purchase-report-filters input { min-height: 36px; }
+#page-reportes .purchase-report-summary { padding: 0 20px 14px; color: var(--accent-strong); font-size: 12px; font-weight: 700; }
+#page-reportes .purchase-report .table-card { box-shadow: none; }
+#page-reportes .purchase-report-payables { margin-top: 18px; border-top: 1px solid var(--border); }
+#page-reportes .purchase-report-payables .table-header { padding-top: 18px; }
+#page-reportes .receivables-report > table { min-width: 920px; }
+#page-reportes .receivables-report .purchase-report-filters { border-bottom: 1px solid var(--border); }
+#page-compras .purchase-payment-control { display: grid; gap: 6px; min-width: 145px; }
+#page-compras .purchase-payment-control input { min-height: 32px; }
+#page-compras .purchase-history-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; padding: 0 20px 14px; }
+#page-compras .purchase-history-filters label { display: grid; gap: 5px; min-width: 145px; color: var(--muted); font-size: 10px; font-weight: 700; }
+#page-compras .purchase-history-filters input,
+#page-compras .purchase-history-filters select { min-height: 34px; }
 #page-compras #form-compra {
 	padding: 4px 20px 20px;
 }
@@ -400,7 +444,7 @@ input::placeholder { color: #a3aca1; }
 #page-compras > .table-card:last-child .table-header {
 	padding: 18px 20px 12px;
 }
-#page-compras > .table-card:last-child table { min-width: 760px; }
+#page-compras > .table-card:last-child table { min-width: 1320px; }
 #page-compras > .table-card:last-child th { background: #edf3eb; }
 #page-compras > .table-card:last-child td { vertical-align: middle; }
 #page-compras > .table-card:last-child a {
@@ -636,6 +680,21 @@ input::placeholder { color: #a3aca1; }
 	#page-compras .purchase-rate-field { flex: 1 1 180px; }
 	#page-compras .purchase-sunat-button { align-self: end; }
 	#page-compras .purchase-rate-meta { flex: 1 1 100%; }
+	#page-compras .supplier-admin #form-proveedor { padding: 0 12px 12px; }
+	#page-compras .supplier-admin #form-proveedor .form-grid { grid-template-columns: minmax(0, 1fr); }
+	#page-usuarios #form-usuario { padding: 0 12px 12px; }
+	#page-usuarios #form-usuario .user-form-grid { grid-template-columns: minmax(0, 1fr); }
+	#page-usuarios .user-permissions-panel { margin-right: 12px; margin-left: 12px; }
+	#page-usuarios .user-admin-notice { margin-right: 12px; margin-left: 12px; }
+	#page-compras .purchase-item-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	#page-compras .purchase-item-row > button { grid-column: 1 / -1; }
+	#page-reportes .purchase-report-filters { align-items: stretch; padding-right: 12px; padding-left: 12px; }
+	#page-reportes .purchase-report-filters label { flex: 1 1 140px; min-width: 0; }
+	#page-reportes .purchase-report-summary { padding-right: 12px; padding-left: 12px; }
+	#page-reportes .receivables-report .purchase-report-filters { padding-right: 12px; padding-left: 12px; }
+	#page-compras .purchase-payment-control { min-width: 145px; }
+	#page-compras .purchase-history-filters { padding-right: 12px; padding-left: 12px; }
+	#page-compras .purchase-history-filters label { flex: 1 1 140px; min-width: 0; }
 	#page-compras #form-compra .form-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
 	#page-compras #form-compra .form-group:nth-child(7),
 	#page-compras #form-compra .form-group:nth-child(8),

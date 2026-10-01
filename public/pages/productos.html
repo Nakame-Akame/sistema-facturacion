@@ -1,0 +1,17 @@
+<div class="page" id="page-productos">
+    <div class="table-card">
+      <div class="table-header">
+        <h2>Catálogo de productos</h2>
+        <div class="table-tools">
+          <div class="search-bar"><input type="text" id="buscar-producto" placeholder="Buscar..." oninput="filtrarProductos()"></div>
+          <button class="btn btn-primary" onclick="abrirModalProducto()">+ Nuevo Producto</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Nombre</th><th>Categoría</th><th>Precios</th><th>Stock</th><th>Acciones</th></tr></thead>
+        <tbody id="productos-body">
+          <tr><td colspan="5"><div class="empty"><span class="icon">📦</span><p>No hay productos aún</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>

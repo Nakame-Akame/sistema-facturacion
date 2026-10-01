@@ -58,6 +58,10 @@ npm start
 
 El servidor queda disponible en `http://localhost:3000` (o en el puerto definido por `PORT`). La ruta `GET /api/health` comprueba también que SQLite responde. El frontend usa una ruta relativa `/api`, así que no requiere cambiar código al desplegarlo detrás de otro host o puerto.
 
+### Estructura del frontend
+
+`public/index.html` contiene el shell común y carga las vistas desde `public/pages/` antes de iniciar `public/app.js`. Cada pantalla tiene un fragmento HTML propio; los modales compartidos están en `public/pages/modals.html` y los estilos globales en `public/Style.css`.
+
 ### Importar productos desde XLS
 
 Para cargar un catálogo con las columnas `Producto`, `Precio Unidad`, `Precio Mayor`, `Precio Especial`, `Precio Compra Promedio`, `Stock Real` y `Familia`:
@@ -85,6 +89,24 @@ Las pruebas usan SQLite en memoria y no escriben en `facturacion.db`. El chequeo
 - Devoluciones y notas de crédito requieren un comprobante de venta del mismo cliente y no pueden ajustar más unidades que las aún disponibles.
 - Emisión, reserva de serie, movimientos de stock, anulación y devolución usan transacciones SQLite. No se permite stock negativo; las anulaciones repetidas o transiciones de estado no autorizadas se rechazan.
 
+## Inventario y kardex
+
+`GET /api/inventario/kardex` lista movimientos y acepta filtros opcionales `producto_id`, `almacen_id`, `tipo`, `desde` y `hasta`. Las fechas usan el formato `YYYY-MM-DD`; el rango incluye ambos días. Tipos admitidos: `ENTRADA`, `SALIDA`, `VENTA`, `COMPRA`, `DEVOLUCION`, `AJUSTE` y `TRANSFERENCIA`. `GET /api/inventario/resumen` muestra existencias, valor estimado, alertas y totales por almacén; `GET /api/reportes/alertas-stock` ofrece el listado de productos bajo el umbral configurado (o cinco unidades si no se definió).
+
+## Proveedores y compras
+
+La sección Compras mantiene el catálogo de proveedores con documento único, razón social y datos de contacto. Permite buscar, editar y desactivar o reactivar proveedores; al registrar una compra, se puede seleccionar uno para completar sus datos. Los documentos guardan los datos del proveedor como historial propio, por lo que cambios posteriores al catálogo no modifican compras anteriores. La captura admite hasta 100 productos por documento, cada uno con cantidad y costo unitario, en un almacén común. Al elegir USD, cada costo se convierte a PEN con el tipo de cambio mostrado. El documento, el stock, el costo del producto, sus detalles y los movimientos kardex se guardan en una sola transacción; si una línea no es válida, se revierte toda la recepción. También se pueden guardar documentos sin ingresar stock. La API está protegida por los permisos de compras.
+
+El historial incluye los productos, cantidades, costos y almacenes registrados en cada recepción. `GET /api/reportes/compras?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` devuelve resumen de documentos, líneas y unidades, agrupado por proveedor y por producto; las fechas del periodo son inclusivas y obligatorias.
+
+El historial de compras se puede filtrar por proveedor/RUC/serie, condición de pago, estado y rango inclusivo de fechas. `GET /api/reportes/compras/exportar?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` descarga un Excel con las hojas `Recepciones` (detalle de productos) y `Cuentas por pagar` (créditos pendientes y saldo neto después de abonos).
+
+En documentos a crédito, `PATCH /api/compras/:id/pago` registra el saldo completo y `POST /api/compras/:id/pagos` admite abonos con monto, fecha y método (`efectivo`, `transferencia`, `tarjeta` u `otro`). No admite documentos al contado, fechas inválidas ni pagos por encima del saldo. El historial incluye cada pago, lo abonado y el saldo restante. El reporte `GET /api/reportes/cuentas-por-pagar?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` lista créditos no pagados y agrupa importe, abonado y saldo **estimado** en PEN a partir de las líneas de recepción registradas. No calcula vencimientos y los documentos sin líneas tienen saldo estimado cero.
+
+Las facturas y boletas a crédito aceptan cobros parciales con `POST /api/comprobantes/:id/pagos`; el sistema guarda monto, fecha, método y referencia y cambia el estado automáticamente entre `emitido`, `parcial` y `pagado`. `GET /api/reportes/cuentas-por-cobrar?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` muestra cobrado, saldo neto, vencimientos y días de mora. Las ventas con cobros registrados no se pueden anular directamente.
+
+El detalle de cada comprobante incluye los cobros registrados y su saldo. `GET /api/reportes/cuentas-por-cobrar/exportar?desde=YYYY-MM-DD&hasta=YYYY-MM-DD` descarga un Excel con las hojas `Cuentas por cobrar` y `Resumen por cliente`, calculadas para el mismo rango inclusivo del reporte.
+
 ## Roles
 
 | Acción | Administrador | Vendedor |
@@ -98,6 +120,8 @@ Las pruebas usan SQLite en memoria y no escriben en `facturacion.db`. El chequeo
 | Anular, devolver, crear notas de crédito o administrar usuarios | Sí | No |
 
 Los permisos se verifican en el servidor. La matriz de vendedor es una política inicial y debe confirmarse con el negocio antes de habilitar más acciones.
+
+El administrador puede crear cuentas desde la sección Usuarios y asignar los roles `admin` o `vendedor`. Al crear un vendedor puede seleccionar permisos por módulo; el servidor valida y aplica cada selección en todas las rutas protegidas. Los administradores siempre conservan acceso total. Las contraseñas deben tener al menos 12 caracteres y se almacenan con bcrypt. El sistema no permite autoeliminarse ni eliminar al último administrador; los vendedores no pueden listar ni administrar cuentas.
 
 ## Respaldar y restaurar
 

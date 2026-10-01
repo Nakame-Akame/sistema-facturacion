@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
+const METODOS_COBRO = new Set(['efectivo', 'transferencia', 'tarjeta', 'otro']);
 const { tienePermiso, requierePermiso } = require('../middleware/permisos');
 const {
   ErrorValidacion,
@@ -16,10 +17,18 @@ router.get('/', requierePermiso('comprobantes:ver'), (req, res) => {
     const { tipo } = req.query;
     let query = `
       SELECT c.*, cl.nombre as cliente_nombre, cl.documento as cliente_documento,
-             s.serie as serie_actual
+             s.serie as serie_actual,
+             COALESCE(pagos.monto_cobrado, 0) AS monto_cobrado,
+             CASE WHEN c.estado = 'pagado' THEN 0
+               ELSE ROUND(MAX(0, c.total - COALESCE(pagos.monto_cobrado, 0)), 2)
+             END AS saldo_pendiente
       FROM comprobantes c
       JOIN clientes cl ON c.cliente_id = cl.id
       JOIN series s ON s.tipo = c.tipo
+      LEFT JOIN (
+        SELECT comprobante_id, ROUND(SUM(monto), 2) AS monto_cobrado
+        FROM pagos_comprobante GROUP BY comprobante_id
+      ) pagos ON pagos.comprobante_id = c.id
     `;
     const params = [];
     if (tipo) { query += ' WHERE c.tipo = ?'; params.push(tipo); }
@@ -68,7 +77,26 @@ router.get('/:id', requierePermiso('comprobantes:ver'), (req, res) => {
       WHERE d.comprobante_id = ?
     `).all(req.params.id);
 
-    res.json({ ok: true, data: { ...comp, detalle } });
+    const pagos = db.prepare(`
+      SELECT monto, fecha_pago, metodo_pago, referencia
+      FROM pagos_comprobante
+      WHERE comprobante_id = ?
+      ORDER BY fecha_pago ASC, id ASC
+    `).all(req.params.id);
+
+    const montoCobrado = Number(pagos.reduce((total, pago) => total + Number(pago.monto), 0).toFixed(2));
+    res.json({
+      ok: true,
+      data: {
+        ...comp,
+        detalle,
+        pagos,
+        monto_cobrado: montoCobrado,
+        saldo_pendiente: comp.estado === 'pagado'
+          ? 0
+          : Math.max(0, Number((Number(comp.total) - montoCobrado).toFixed(2))),
+      },
+    });
   } catch (err) {
     console.error('Error al consultar comprobante:', err);
     res.status(500).json({ ok: false, error: 'Error interno del servidor' });
@@ -83,7 +111,7 @@ router.post('/', (req, res) => {
     const permisoTipo = tipo === 'nota_devolucion'
       ? 'comprobantes:devolver'
       : `comprobantes:crear_${tipo}`;
-    if (!tienePermiso(req.session.usuario.rol, permisoTipo)) {
+    if (!tienePermiso(req.session.usuario.rol, permisoTipo, req.session.usuario.permisos)) {
       return res.status(403).json({
         ok: false,
         error: `Tu rol no puede crear comprobantes de tipo: ${TIPOS[tipo].label}`
@@ -103,6 +131,78 @@ router.post('/', (req, res) => {
     res.status(status).json({
       ok: false,
       error: status === 500 ? 'Error interno del servidor' : err.message,
+    });
+  }
+});
+
+router.post('/:id/pagos', requierePermiso('comprobantes:pagar'), (req, res) => {
+  const id = Number(req.params.id);
+  const monto = Number(req.body?.monto);
+  const fechaPago = req.body?.fecha_pago;
+  const metodoPago = String(req.body?.metodo_pago || '').trim().toLowerCase();
+  const referencia = String(req.body?.referencia || '').trim();
+  const centavos = Math.round(monto * 100);
+  const fecha = typeof fechaPago === 'string' ? new Date(`${fechaPago}T00:00:00.000Z`) : null;
+  if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(monto) || monto <= 0 ||
+      Math.abs(monto * 100 - centavos) > 1e-7 || !fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fechaPago) ||
+      !Number.isFinite(fecha.getTime()) || fecha.toISOString().slice(0, 10) !== fechaPago ||
+      !METODOS_COBRO.has(metodoPago) || referencia.length > 100) {
+    return res.status(400).json({ ok: false, error: 'Datos del cobro no válidos.' });
+  }
+
+  try {
+    const data = db.transaction(() => {
+      const comprobante = db.prepare(`
+        SELECT id, tipo, total, condicion_pago, estado
+        FROM comprobantes WHERE id = ?
+      `).get(id);
+      if (!comprobante) throw new ErrorValidacion('Comprobante no encontrado', 404);
+      if (!['factura', 'boleta'].includes(comprobante.tipo) || comprobante.condicion_pago !== 'credito') {
+        throw new ErrorValidacion('Solo se aceptan cobros de facturas o boletas a crédito', 409);
+      }
+      if (!['emitido', 'parcial'].includes(comprobante.estado)) {
+        throw new ErrorValidacion('El comprobante no admite más cobros', 409);
+      }
+
+      const totalCentimos = Math.round(Number(comprobante.total) * 100);
+      const cobradoCentimos = Math.round(Number(db.prepare(`
+        SELECT COALESCE(SUM(monto), 0) AS total
+        FROM pagos_comprobante WHERE comprobante_id = ?
+      `).get(id).total) * 100);
+      const saldoCentimos = Math.max(0, totalCentimos - cobradoCentimos);
+      if (centavos > saldoCentimos) {
+        throw new ErrorValidacion('El cobro no puede superar el saldo pendiente');
+      }
+
+      db.prepare(`
+        INSERT INTO pagos_comprobante
+          (comprobante_id, monto, fecha_pago, metodo_pago, referencia, usuario_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(id, monto, fechaPago, metodoPago, referencia || null, req.session?.usuario?.id || null);
+
+      const nuevoCobrado = cobradoCentimos + centavos;
+      const saldoRestante = totalCentimos - nuevoCobrado;
+      const estado = saldoRestante === 0 ? 'pagado' : 'parcial';
+      const actualizacion = db.prepare(`
+        UPDATE comprobantes SET estado = ?, fecha_pago = ?
+        WHERE id = ? AND estado = ?
+      `).run(estado, fechaPago, id, comprobante.estado);
+      if (actualizacion.changes !== 1) throw new Error('El estado del comprobante cambió durante el cobro.');
+
+      return {
+        comprobante_id: id,
+        estado,
+        total: totalCentimos / 100,
+        monto_cobrado: nuevoCobrado / 100,
+        saldo_pendiente: saldoRestante / 100,
+      };
+    })();
+    res.status(201).json({ ok: true, data });
+  } catch (error) {
+    const status = error instanceof ErrorValidacion ? error.status : 500;
+    res.status(status).json({
+      ok: false,
+      error: status === 500 ? 'No se pudo registrar el cobro.' : error.message,
     });
   }
 });

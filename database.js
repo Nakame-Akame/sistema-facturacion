@@ -100,6 +100,19 @@ db.exec(`
     FOREIGN KEY (producto_id) REFERENCES productos(id)
   );
 
+  CREATE TABLE IF NOT EXISTS pagos_comprobante (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    comprobante_id INTEGER NOT NULL,
+    monto REAL NOT NULL CHECK (monto > 0),
+    fecha_pago TEXT NOT NULL,
+    metodo_pago TEXT NOT NULL,
+    referencia TEXT,
+    usuario_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (comprobante_id) REFERENCES comprobantes(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+  );
+
   -- Usuarios
   CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,6 +120,7 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     rol TEXT DEFAULT 'vendedor',
+    permisos TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -116,6 +130,34 @@ db.exec(`
     tipo TEXT UNIQUE NOT NULL,
     serie TEXT NOT NULL,
     ultimo_numero INTEGER DEFAULT 0
+  );
+
+  -- Almacenes y movimiento de inventario
+  CREATE TABLE IF NOT EXISTS almacenes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    codigo TEXT NOT NULL UNIQUE,
+    tipo TEXT DEFAULT 'principal',
+    activo INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS kardex_movimientos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    producto_id INTEGER NOT NULL,
+    almacen_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    costo_unitario REAL DEFAULT 0,
+    stock_anterior INTEGER NOT NULL,
+    stock_posterior INTEGER NOT NULL,
+    documento_relacionado TEXT,
+    observacion TEXT,
+    usuario_id INTEGER,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (producto_id) REFERENCES productos(id),
+    FOREIGN KEY (almacen_id) REFERENCES almacenes(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
   );
 
   -- Documentos de compras recibidos
@@ -147,6 +189,43 @@ db.exec(`
     guia_archivo_ruta TEXT,
     guia_archivo_mime TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS detalle_documento_compra (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    documento_compra_id INTEGER NOT NULL,
+    producto_id INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL,
+    costo_unitario REAL NOT NULL DEFAULT 0,
+    almacen_id INTEGER NOT NULL,
+    FOREIGN KEY (documento_compra_id) REFERENCES documentos_compra(id),
+    FOREIGN KEY (producto_id) REFERENCES productos(id),
+    FOREIGN KEY (almacen_id) REFERENCES almacenes(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS pagos_documento_compra (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    documento_compra_id INTEGER NOT NULL,
+    monto REAL NOT NULL CHECK (monto > 0),
+    fecha_pago TEXT NOT NULL,
+    metodo_pago TEXT NOT NULL,
+    referencia TEXT,
+    usuario_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (documento_compra_id) REFERENCES documentos_compra(id),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS proveedores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    documento TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    razon_social TEXT NOT NULL,
+    direccion TEXT,
+    telefono TEXT,
+    email TEXT,
+    activo INTEGER NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE TABLE IF NOT EXISTS tipo_cambio_diario (
@@ -190,6 +269,24 @@ if (!columnasProductos.some(columna => columna.name === 'precio_pase')) {
 if (!columnasProductos.some(columna => columna.name === 'precio_compra')) {
   db.exec('ALTER TABLE productos ADD COLUMN precio_compra REAL NOT NULL DEFAULT 0');
 }
+for (const [nombre, tipo, valorDefault] of [
+  ['codigo_interno', 'TEXT', "''"],
+  ['sku', 'TEXT', "''"],
+  ['codigo_barras', 'TEXT', "''"],
+  ['marca', 'TEXT', "''"],
+  ['unidad_medida', 'TEXT', "'UND'"],
+  ['stock_minimo', 'INTEGER', 0],
+  ['stock_maximo', 'INTEGER', 0],
+  ['imagen', 'TEXT', "''"],
+  ['activo', 'INTEGER', 1],
+  ['igv', 'INTEGER', 1],
+  ['ubicacion', 'TEXT', "''"],
+  ['proveedor_principal', 'TEXT', "''"],
+]) {
+  if (!columnasProductos.some(columna => columna.name === nombre)) {
+    db.exec(`ALTER TABLE productos ADD COLUMN ${nombre} ${tipo} DEFAULT ${valorDefault}`);
+  }
+}
 db.exec(`
   UPDATE productos
   SET precio_rebaja = precio
@@ -197,6 +294,15 @@ db.exec(`
   UPDATE productos
   SET precio_pase = precio
   WHERE precio_pase <= 0;
+  UPDATE productos
+  SET unidad_medida = 'UND'
+  WHERE unidad_medida IS NULL OR TRIM(unidad_medida) = '';
+  UPDATE productos
+  SET activo = 1
+  WHERE activo IS NULL;
+  UPDATE productos
+  SET igv = 1
+  WHERE igv IS NULL;
 `);
 
 const columnasDetalle = db.pragma('table_info(detalle_comprobante)');
@@ -207,6 +313,9 @@ if (!columnasDetalle.some(columna => columna.name === 'tipo_precio')) {
 const columnasComprobantes = db.pragma('table_info(comprobantes)');
 if (!columnasComprobantes.some(columna => columna.name === 'precios_incluyen_igv')) {
   db.exec('ALTER TABLE comprobantes ADD COLUMN precios_incluyen_igv INTEGER NOT NULL DEFAULT 0');
+}
+if (!columnasComprobantes.some(columna => columna.name === 'fecha_pago')) {
+  db.exec('ALTER TABLE comprobantes ADD COLUMN fecha_pago TEXT');
 }
 
 // Insertar series por defecto si no existen

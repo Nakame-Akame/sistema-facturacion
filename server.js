@@ -64,7 +64,9 @@ app.use('/api/auth', require('./routes/auth'));
 // Rutas protegidas
 app.use('/api/clientes',     requiereLogin, require('./routes/clientes'));
 app.use('/api/productos',    requiereLogin, require('./routes/productos'));
+app.use('/api/inventario',    requiereLogin, require('./routes/inventario'));
 app.use('/api/compras',      requiereLogin, require('./routes/compras'));
+app.use('/api/proveedores',  requiereLogin, require('./routes/proveedores'));
 app.use('/api/tipo-cambio',  requiereLogin, require('./routes/tipo-cambio'));
 app.use('/api/comprobantes', requiereLogin, require('./routes/comprobantes'));
 app.use('/api/reportes',     requiereLogin, require('./routes/reportes'));

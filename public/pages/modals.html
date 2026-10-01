@@ -1,0 +1,201 @@
+<!-- ===== MODAL CLIENTE ===== -->
+<div class="modal-overlay" id="modal-cobro-factura">
+  <form class="modal modal-lg" onsubmit="guardarCobroFactura(event)">
+    <button class="modal-close" type="button" onclick="cerrarModal('modal-cobro-factura')" aria-label="Cerrar">✕</button>
+    <h2>Registrar cobro</h2>
+    <p id="cobro-factura-info" class="sales-subtitle"></p>
+    <input type="hidden" id="cobro-comprobante-id">
+    <div class="form-grid">
+      <div class="form-group"><label for="cobro-monto">Monto (S/) *</label><input id="cobro-monto" type="number" min="0.01" step="0.01" required></div>
+      <div class="form-group"><label for="cobro-fecha">Fecha de cobro *</label><input id="cobro-fecha" type="date" required></div>
+      <div class="form-group"><label for="cobro-metodo">Método *</label><select id="cobro-metodo"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
+      <div class="form-group"><label for="cobro-referencia">Referencia</label><input id="cobro-referencia" maxlength="100"></div>
+    </div>
+    <div class="modal-footer"><button class="btn" type="button" onclick="cerrarModal('modal-cobro-factura')">Cancelar</button><button class="btn btn-primary" type="submit">Guardar cobro</button></div>
+  </form>
+</div>
+
+<!-- ===== MODAL CLIENTE ===== -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <button class="modal-close" onclick="cerrarModal('modal-cliente')">✕</button>
+    <h2 id="modal-cliente-title">Nuevo Cliente</h2>
+    <input type="hidden" id="cliente-id">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre completo *</label><input type="text" id="cliente-nombre" placeholder="Ej: Juan Pérez"></div>
+      <div class="form-group"><label>RUC / DNI</label><input type="text" id="cliente-doc" placeholder="20123456789"></div>
+      <div class="form-group"><label>Teléfono</label><input type="text" id="cliente-tel" placeholder="999888777"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="cliente-email" placeholder="correo@ejemplo.com"></div>
+      <div class="form-group"><label>Dirección</label><input type="text" id="cliente-dir" placeholder="Jr. Lima 123"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarCliente()">Guardar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PRODUCTO ===== -->
+<div class="modal-overlay" id="modal-producto">
+  <div class="modal">
+    <button class="modal-close" onclick="cerrarModal('modal-producto')">✕</button>
+    <h2 id="modal-producto-title">Nuevo Producto</h2>
+    <input type="hidden" id="producto-id">
+    <div class="form-grid">
+      <div class="form-group full"><label>Nombre *</label><input type="text" id="producto-nombre" placeholder="Ej: Arroz 1kg"></div>
+      <div class="form-group"><label>Precio unidad con IGV (S/) *</label><input type="number" id="producto-precio" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio rebaja (S/) *</label><input type="number" id="producto-precio-rebaja" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio pase (S/) *</label><input type="number" id="producto-precio-pase" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Precio compra con IGV (S/)</label><input type="number" id="producto-precio-compra" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="form-group"><label>Stock inicial</label><input type="number" id="producto-stock" placeholder="0" min="0"></div>
+      <div class="form-group"><label>Categoría</label><input type="text" id="producto-cat" placeholder="Ej: Abarrotes"></div>
+      <div class="form-group full"><label>Descripción</label><input type="text" id="producto-desc" placeholder="Descripción opcional"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-producto')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarProducto()">Guardar Producto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL NUEVA FACTURA ===== -->
+<div class="modal-overlay" id="modal-factura">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="cerrarModal('modal-factura')">✕</button>
+    <h2 id="modal-factura-title">Nuevo Comprobante</h2>
+    <input type="hidden" id="factura-tipo">
+
+    <div class="form-grid" style="margin-bottom:8px;">
+      <div class="form-group full">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;">
+          <div class="form-group">
+            <label for="buscar-cliente-factura">Consultar DNI en RENIEC o RUC en SUNAT</label>
+            <input type="search" id="buscar-cliente-factura" placeholder="8 dígitos DNI / 11 dígitos RUC" oninput="filtrarClientesFactura()" onkeydown="if(event.key==='Enter'){event.preventDefault();consultarClienteDocumento();}" style="width:100%;">
+          </div>
+          <button class="btn btn-ghost" id="btn-consultar-documento" type="button" onclick="consultarClienteDocumento()">Consultar</button>
+        </div>
+        <div id="resultado-consulta-documento" class="alert alert-info" role="status" aria-live="polite" style="display:none;margin:8px 0 0;"></div>
+        <label>Cliente *</label>
+        <select id="factura-cliente"></select>
+      </div>
+    </div>
+
+    <!-- Condición de pago -->
+    <div class="section-title">Condición de pago</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Condición *</label>
+        <select id="factura-condicion" onchange="onCambioCondicionPago()">
+          <option value="no_afecta">No afecta</option>
+          <option value="contado" selected>Contado</option>
+          <option value="credito">Crédito</option>
+        </select>
+      </div>
+      <div class="form-group" id="grupo-fecha-vencimiento" style="display:none;">
+        <label>Fecha de caducación *</label>
+        <input type="date" id="factura-vencimiento">
+      </div>
+    </div>
+
+    <!-- Campos exclusivos de Guía de Remisión -->
+    <div id="campos-guia" style="display:none;">
+      <div class="section-title">Datos del traslado</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Dirección de partida</label><input type="text" id="guia-partida" placeholder="Almacén Central - Jr. Lima 123"></div>
+        <div class="form-group"><label>Dirección de llegada</label><input type="text" id="guia-llegada" placeholder="Av. Grau 456"></div>
+        <div class="form-group"><label>Transportista</label><input type="text" id="guia-transportista" placeholder="Trans Rápido SAC"></div>
+        <div class="form-group"><label>Fecha de traslado</label><input type="date" id="guia-fecha-traslado"></div>
+      </div>
+    </div>
+
+    <!-- Campos exclusivos de Notas de Crédito / Devolución -->
+    <div id="campos-referencia" style="display:none;">
+      <div class="section-title">Comprobante de referencia</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Comprobante que referencia *</label>
+          <select id="ref-comprobante"></select>
+        </div>
+        <div class="form-group">
+          <label>Motivo *</label>
+          <input type="text" id="ref-motivo" placeholder="Ej: Devolución por producto dañado">
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Agregar productos</div>
+    <div style="display:grid;grid-template-columns:2fr 140px 80px 36px;gap:8px;margin-bottom:12px;align-items:end;">
+      <div class="form-group" style="margin:0">
+        <label>Producto</label>
+        <select id="item-producto" onchange="mostrarPreciosProducto()"></select>
+        <div id="item-precios-disponibles" style="font-size:12px;color:var(--muted);margin-top:4px;">Unidad: S/ 0.00 · Rebaja: S/ 0.00 · Pase: S/ 0.00</div>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Precio</label>
+        <select id="item-tipo-precio" onchange="mostrarPreciosProducto()">
+          <option value="unidad">Unidad</option>
+          <option value="rebaja">Rebaja</option>
+          <option value="pase">Pase</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label>Cantidad</label>
+        <input type="number" id="item-cantidad" value="1" min="1">
+      </div>
+      <button class="btn btn-success" onclick="agregarItem()" style="height:38px;">+</button>
+    </div>
+
+    <div class="items-list" id="items-lista">
+      <div class="item-row header"><span>Producto</span><span>Cant.</span><span>Subtotal</span><span></span></div>
+    </div>
+
+    <div class="items-total" id="items-total" style="display:none;">
+      <div class="total-row"><span style="color:var(--muted)">Subtotal</span><span class="mono" id="tot-sub">S/ 0.00</span></div>
+      <div class="total-row" id="fila-igv"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="tot-igv">S/ 0.00</span></div>
+      <div class="total-row final"><span>TOTAL</span><span class="mono" id="tot-total">S/ 0.00</span></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-factura')">Cancelar</button>
+      <button class="btn btn-success" id="btn-emitir" onclick="emitirFactura()">✓ Emitir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VER FACTURA ===== -->
+<div class="modal-overlay" id="modal-ver-factura">
+  <div class="modal modal-lg">
+    <button class="modal-close" onclick="cerrarModal('modal-ver-factura')">✕</button>
+    <div id="factura-preview-content"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModal('modal-ver-factura')">Cerrar</button>
+      <label class="print-format-control">Formato
+        <select id="formato-impresion">
+          <option value="a4">A4</option>
+          <option value="80mm" selected>Ticket 80 mm</option>
+          <option value="58mm">Ticket 58 mm</option>
+        </select>
+      </label>
+      <button class="btn btn-primary" onclick="imprimirFormatoSeleccionado()">🖨️ Imprimir / PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="modal-overlay" id="modal-confirmar-venta">
+  <div class="modal modal-confirmar">
+    <button class="modal-close" onclick="cerrarModal('modal-confirmar-venta')">✕</button>
+    <div class="confirmar-icon">✓</div>
+    <h2>Guardar registro</h2>
+    <p>¿Estás seguro que deseas guardar el registro?</p>
+    <label class="confirmar-formato">Formato de impresión
+      <select id="formato-confirmacion"><option value="80mm">Ticket 80 mm</option><option value="58mm">Ticket 58 mm</option><option value="a4">A4</option></select>
+    </label>
+    <div class="modal-footer confirmar-actions">
+      <button class="btn btn-primary" onclick="procesarVentaConfirmada(false)">Guardar</button>
+      <button class="btn btn-primary" onclick="procesarVentaConfirmada(true)">Guardar e Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>

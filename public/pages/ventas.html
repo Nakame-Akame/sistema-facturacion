@@ -1,0 +1,64 @@
+<div class="page" id="page-ventas">
+    <div class="sales-page-head">
+      <div><p class="eyebrow">VENTA DIRECTA</p><h2>Productos y emisión</h2></div>
+      <button class="btn btn-ghost" onclick="goTo('facturas')">Ver comprobantes</button>
+    </div>
+    <div class="sales-layout">
+      <section class="table-card sales-catalog">
+        <div class="table-header">
+          <div><h2>Catálogo</h2><p class="sales-subtitle">Busca por producto o categoría y agrégalo a la venta.</p></div>
+          <div class="search-bar"><input type="search" id="buscar-producto-venta" placeholder="Buscar producto..." oninput="renderProductosVenta()"></div>
+        </div>
+        <div class="sales-product-grid" id="ventas-productos-body" aria-live="polite">
+          <div class="empty"><span class="icon">📦</span><p>Cargando productos...</p></div>
+        </div>
+      </section>
+
+      <section class="sales-checkout" aria-label="Detalle de venta">
+        <h2>Nueva venta</h2>
+        <p class="sales-subtitle">Selecciona cliente, comprobante y productos.</p>
+
+        <div class="sales-type-switch" role="group" aria-label="Tipo de comprobante">
+          <button class="sales-type-button active" id="venta-tipo-boleta" type="button" aria-pressed="true" onclick="seleccionarTipoVenta('boleta')">Boleta</button>
+          <button class="sales-type-button" id="venta-tipo-factura" type="button" aria-pressed="false" onclick="seleccionarTipoVenta('factura')">Factura</button>
+        </div>
+
+        <div class="sales-field">
+          <label for="buscar-cliente-venta">DNI o RUC del cliente</label>
+          <div class="sales-client-search">
+            <input type="search" id="buscar-cliente-venta" placeholder="8 dígitos DNI / 11 dígitos RUC" onkeydown="if(event.key==='Enter'){event.preventDefault();consultarClienteVenta();}">
+            <button class="btn btn-ghost" id="btn-consultar-cliente-venta" type="button" onclick="consultarClienteVenta()">Consultar</button>
+          </div>
+          <div id="resultado-cliente-venta" class="alert alert-info" role="status" aria-live="polite" style="display:none;margin:0;"></div>
+        </div>
+
+        <div class="sales-field">
+          <label for="venta-cliente">Cliente *</label>
+          <select id="venta-cliente"><option value="">-- Selecciona un cliente --</option></select>
+        </div>
+
+        <div class="sales-field">
+          <label for="venta-condicion">Condición de pago</label>
+          <select id="venta-condicion" onchange="actualizarResumenVenta()">
+            <option value="contado">Contado</option>
+            <option value="credito">Crédito</option>
+          </select>
+        </div>
+        <div class="sales-field" id="venta-grupo-vencimiento" style="display:none;">
+          <label for="venta-vencimiento">Fecha de vencimiento *</label>
+          <input type="date" id="venta-vencimiento">
+        </div>
+
+        <div class="section-title">Carrito</div>
+        <div class="sales-cart-list" id="ventas-carrito-body">
+          <p class="sales-subtitle">Aún no agregas productos.</p>
+        </div>
+        <div class="sales-summary">
+          <div class="total-row"><span style="color:var(--muted)">Subtotal sin IGV</span><span class="mono" id="venta-subtotal">S/ 0.00</span></div>
+          <div class="total-row"><span style="color:var(--muted)">IGV (18%)</span><span class="mono" id="venta-igv">S/ 0.00</span></div>
+          <div class="total-row final"><span>TOTAL</span><span class="mono" id="venta-total">S/ 0.00</span></div>
+        </div>
+        <button class="btn btn-success sales-submit" id="btn-emitir-venta" type="button" onclick="abrirConfirmacionVenta()">Emitir boleta</button>
+      </section>
+    </div>
+  </div>
