@@ -1037,16 +1037,70 @@ function seleccionarTipo(tipo) {
   aplicarFiltroTipo();
 }
 
+function normalizarFechaLocal(valor) {
+  if (!valor) return null;
+  const raw = String(valor).trim();
+  if (!raw) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [anio, mes, dia] = raw.split('-').map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+  const fecha = new Date(raw);
+  if (Number.isNaN(fecha.getTime())) return null;
+  return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+}
+
+function formatearFechaLocal(valor) {
+  const fecha = normalizarFechaLocal(valor);
+  if (!fecha) return '—';
+  return fecha.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function getRangoFechaComprobantes() {
+  return {
+    desde: document.getElementById('fecha-desde')?.value || '',
+    hasta: document.getElementById('fecha-hasta')?.value || '',
+  };
+}
+
+function resetearFechas() {
+  const desde = document.getElementById('fecha-desde');
+  const hasta = document.getElementById('fecha-hasta');
+  if (desde) desde.value = '';
+  if (hasta) hasta.value = '';
+  aplicarFiltroTipo();
+}
+
 function aplicarFiltroTipo() {
   const q = (document.getElementById('buscar-factura').value || '').toLowerCase();
   const documentoQuery = q.replace(/\D/g, '');
+  const { desde, hasta } = getRangoFechaComprobantes();
+  const fechaDesde = desde ? normalizarFechaLocal(desde) : null;
+  const fechaHasta = hasta ? normalizarFechaLocal(hasta) : null;
+
   let lista = tipoActivo === 'todos' ? facturasData : facturasData.filter(f => f.tipo === tipoActivo);
+
+  if (fechaDesde) {
+    lista = lista.filter(f => {
+      const fecha = normalizarFechaLocal(f.fecha);
+      return fecha && fecha >= fechaDesde;
+    });
+  }
+
+  if (fechaHasta) {
+    lista = lista.filter(f => {
+      const fecha = normalizarFechaLocal(f.fecha);
+      return fecha && fecha <= fechaHasta;
+    });
+  }
+
   if (q) lista = lista.filter(f => {
     const cliente = String(f.cliente_nombre || '').toLowerCase();
     const documento = String(f.cliente_documento || '').replace(/\D/g, '');
     const comprobante = `${f.serie || ''}-${f.numero || ''}`.toLowerCase();
     return cliente.includes(q) || comprobante.includes(q) || (documentoQuery && documento.includes(documentoQuery));
   });
+
   document.getElementById('comprobantes-titulo').textContent = tipoActivo === 'todos'
     ? 'Todos los comprobantes'
     : TIPOS_COMPROBANTE[tipoActivo].label + 's';
@@ -1064,8 +1118,9 @@ function renderFacturas(lista) {
     const estadoBadge = { emitido: 'badge-blue', parcial: 'badge-yellow', pagado: 'badge-green', anulado: 'badge-red', borrador: 'badge-yellow', enviado: 'badge-blue', aprobado: 'badge-green', rechazado: 'badge-red', pendiente: 'badge-yellow', atendido: 'badge-green' };
     const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#7a86a0' };
     const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
-    const fecha = new Date(f.fecha).toLocaleDateString('es-PE');
-    const credVencido = f.condicion_pago === 'credito' && f.fecha_vencimiento && new Date(f.fecha_vencimiento) < new Date() && f.estado !== 'pagado';
+    const fecha = formatearFechaLocal(f.fecha);
+    const credVencido = f.condicion_pago === 'credito' && f.fecha_vencimiento && normalizarFechaLocal(f.fecha_vencimiento) < new Date() && f.estado !== 'pagado';
+    const fechaVencimiento = f.condicion_pago === 'credito' && f.fecha_vencimiento ? formatearFechaLocal(f.fecha_vencimiento) : null;
     return `<tr>
       <td>
         <span class="mono">${num}</span><br>
@@ -1077,7 +1132,7 @@ function renderFacturas(lista) {
         <span class="badge ${f.condicion_pago === 'credito' ? (credVencido ? 'badge-red' : 'badge-yellow') : f.condicion_pago === 'contado' ? 'badge-green' : 'badge-blue'}">
           ${condicionLabel[f.condicion_pago] || f.condicion_pago}
         </span>
-        ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<br><small style="color:${credVencido?'var(--danger)':'var(--muted)'}">${credVencido?'⚠️ Venció: ':'Vence: '}${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE')}</small>` : ''}
+        ${fechaVencimiento ? `<br><small style="color:${credVencido?'var(--danger)':'var(--muted)'}">${credVencido?'⚠️ Venció: ':'Vence: '}${fechaVencimiento}</small>` : ''}
       </td>
       <td class="mono">S/ ${f.subtotal.toFixed(2)}</td>
       <td class="mono">S/ ${f.igv.toFixed(2)}</td>
@@ -1114,7 +1169,7 @@ function abrirModalCobroFactura(id) {
   monto.value = saldo.toFixed(2);
   const hoy = new Date();
   document.getElementById('cobro-fecha').value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-  document.getElementById('cobro-metodo').value = 'transferencia';
+  document.getElementById('cobro-metodo').value = 'efectivo';
   document.getElementById('cobro-referencia').value = '';
   abrirModal('modal-cobro-factura');
 }
@@ -1601,13 +1656,111 @@ function imprimirFormatoSeleccionado() {
   window.location.href = `${API}/pdf/${facturaIdActual}?formato=${encodeURIComponent(formato)}`;
 }
 
-async function cambiarEstado(id, estado) {
-  const msgs = { pagado: '¿Marcar como pagado?', anulado: '¿Anular este comprobante? El stock será devuelto si aplica.' };
-  if (!confirm(msgs[estado] || `¿Cambiar estado a ${estado}?`)) return;
-  const r = await apiFetch(`${API}/comprobantes/${id}/estado`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ estado }) });
+let estadoCambioPendiente = null;
+
+function abrirConfirmacionCambioEstado(id, estado) {
+  const msgs = {
+    pagado: { titulo: 'Cobro crédito' },
+    anulado: { titulo: 'Anular comprobante', texto: '¿Anular este comprobante? El stock será devuelto si aplica.' },
+  };
+
+  const config = msgs[estado] || { titulo: 'Confirmar acción' };
+  estadoCambioPendiente = { id, estado };
+
+  document.getElementById('confirmar-estado-titulo').textContent = config.titulo;
+
+  const pagoForm = document.getElementById('confirmar-pago-form');
+  const metodo = document.getElementById('confirmar-metodo');
+  const fecha = document.getElementById('confirmar-fecha');
+  const monto = document.getElementById('confirmar-monto');
+  const nro = document.getElementById('confirmar-nro-operacion');
+  const evidencia = document.getElementById('confirmar-evidencia');
+
+  if (estado === 'pagado') {
+    pagoForm.style.display = 'block';
+    const metodoActual = 'efectivo';
+    metodo.value = metodoActual;
+    fecha.value = new Date().toISOString().slice(0, 10);
+    monto.value = '0';
+    nro.value = '';
+    evidencia.value = '';
+
+    const comprobante = facturasData.find(item => item.id === id);
+    const total = Number(comprobante?.total || 0);
+    const saldo = Number(comprobante?.saldo_pendiente ?? total);
+    const metodoButtons = document.querySelectorAll('.payment-method-option');
+    metodoButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.method === metodoActual);
+    });
+    document.getElementById('confirmar-total').textContent = `S/ ${total.toFixed(2)}`;
+    document.getElementById('confirmar-pendiente').textContent = `S/ ${saldo.toFixed(2)}`;
+    document.getElementById('confirmar-selection-box').textContent = 'Método seleccionado: Efectivo';
+  } else {
+    pagoForm.style.display = 'none';
+  }
+
+  const selector = document.getElementById('payment-method-list');
+  if (selector) {
+    selector.querySelectorAll('.payment-method-option').forEach(button => {
+      button.onclick = () => {
+        selector.querySelectorAll('.payment-method-option').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        const method = button.dataset.method;
+        document.getElementById('confirmar-metodo').value = method;
+        document.getElementById('confirmar-selection-box').textContent = `Método seleccionado: ${method.toUpperCase()}`;
+        const comprobante = facturasData.find(item => item.id === estadoCambioPendiente?.id);
+        const saldo = Number(comprobante?.saldo_pendiente ?? (comprobante?.total ?? 0));
+        document.getElementById('confirmar-pendiente').textContent = `S/ ${saldo.toFixed(2)}`;
+      };
+    });
+  }
+
+  abrirModal('modal-confirmar-estado');
+}
+
+async function confirmarCambioEstado() {
+  const payload = estadoCambioPendiente;
+  if (!payload) return;
+
+  const metodoPago = document.getElementById('confirmar-metodo')?.value || 'efectivo';
+  const fechaPago = document.getElementById('confirmar-fecha')?.value || new Date().toISOString().slice(0, 10);
+  const comprobante = facturasData.find(item => item.id === payload.id);
+  const monto = Number(document.getElementById('confirmar-monto')?.value ?? comprobante?.saldo_pendiente ?? comprobante?.total ?? 0);
+  const referencia = document.getElementById('confirmar-nro-operacion')?.value.trim() || `${metodoPago.toUpperCase()}-${Date.now().toString().slice(-6)}`;
+  const evidencia = document.getElementById('confirmar-evidencia')?.files?.[0];
+
+  if (payload.estado === 'pagado') {
+    if (!Number.isFinite(monto) || monto <= 0) {
+      return toast('El monto debe ser mayor a cero.', 'error');
+    }
+    if (evidencia && !evidencia.type.startsWith('image/')) {
+      return toast('La evidencia debe ser una imagen.', 'error');
+    }
+  }
+
+  cerrarModal('modal-confirmar-estado');
+  const body = { estado: payload.estado };
+  if (payload.estado === 'pagado') {
+    body.metodo_pago = metodoPago;
+    body.monto = monto;
+    body.fecha_pago = fechaPago;
+    if (referencia) body.referencia = referencia;
+    if (evidencia) body.evidencia = evidencia.name;
+  }
+
+  const r = await apiFetch(`${API}/comprobantes/${payload.id}/estado`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
   const d = await r.json();
   if (d.ok) { toast(d.mensaje); cargarFacturas(); }
   else toast(d.error, 'error');
+  estadoCambioPendiente = null;
+}
+
+async function cambiarEstado(id, estado) {
+  abrirConfirmacionCambioEstado(id, estado);
 }
 
 // ===== REPORTES =====
@@ -1779,9 +1932,7 @@ function mostrarApp(usuario) {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-shell').style.display = 'flex';
   document.getElementById('user-pill').style.display = 'flex';
-  document.getElementById('user-nombre').textContent = usuario.nombre;
-  document.getElementById('user-rol').textContent = usuario.rol;
-  document.getElementById('user-avatar').textContent = usuario.nombre.charAt(0).toUpperCase();
+  actualizarVistaPerfil();
   const permisos = new Set(usuario.permisos || []);
   const accesoTotal = usuario.rol === 'admin' || permisos.has('*');
   const permisosPorPagina = {
@@ -1807,6 +1958,133 @@ function mostrarApp(usuario) {
     if (permitida && !primeraPagina) primeraPagina = pagina;
   }
   if (primeraPagina) goTo(primeraPagina);
+}
+
+function actualizarVistaPerfil() {
+  if (!usuarioActual) return;
+  const nombre = usuarioActual.nombre || 'Usuario';
+  const inicial = nombre.charAt(0).toUpperCase();
+  const avatarEl = document.getElementById('user-avatar');
+  const avatarPerfil = document.getElementById('perfil-avatar');
+  const placeholder = document.getElementById('perfil-avatar-placeholder');
+  const preview = document.getElementById('perfil-avatar-preview');
+
+  if (usuarioActual.avatar && usuarioActual.avatar.startsWith('data:image/')) {
+    avatarEl.style.backgroundImage = `url("${usuarioActual.avatar}")`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+    avatarEl.textContent = '';
+    if (avatarPerfil) {
+      avatarPerfil.style.backgroundImage = `url("${usuarioActual.avatar}")`;
+      avatarPerfil.style.backgroundSize = 'cover';
+      avatarPerfil.style.backgroundPosition = 'center';
+      avatarPerfil.textContent = '';
+    }
+    if (preview) {
+      preview.src = usuarioActual.avatar;
+      preview.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+    }
+  } else {
+    avatarEl.style.backgroundImage = 'none';
+    avatarEl.textContent = inicial;
+    if (avatarPerfil) {
+      avatarPerfil.style.backgroundImage = 'none';
+      avatarPerfil.textContent = inicial;
+    }
+    if (preview) {
+      preview.src = '';
+      preview.style.display = 'none';
+      preview.dataset.avatar = '';
+      if (placeholder) placeholder.style.display = 'block';
+      placeholder.textContent = inicial;
+    }
+  }
+
+  document.getElementById('user-nombre').textContent = nombre;
+  document.getElementById('user-rol').textContent = usuarioActual.rol;
+  document.getElementById('perfil-card-name').textContent = nombre;
+  document.getElementById('perfil-card-email').textContent = usuarioActual.email || 'Sin correo';
+  document.getElementById('perfil-card-role').textContent = usuarioActual.rol === 'admin' ? 'Administrador' : 'Vendedor';
+}
+
+function abrirModalPerfil() {
+  if (!usuarioActual) return;
+  document.getElementById('perfil-nombre').value = usuarioActual.nombre || '';
+  document.getElementById('perfil-email').value = usuarioActual.email || '';
+  document.getElementById('perfil-password').value = '';
+  document.getElementById('perfil-password').type = 'password';
+  document.getElementById('perfil-password-toggle').textContent = 'Mostrar';
+  const preview = document.getElementById('perfil-avatar-preview');
+  const placeholder = document.getElementById('perfil-avatar-placeholder');
+  preview.dataset.avatar = usuarioActual.avatar || '';
+  preview.src = usuarioActual.avatar || '';
+  preview.style.display = usuarioActual.avatar && usuarioActual.avatar.startsWith('data:image/') ? 'block' : 'none';
+  placeholder.style.display = preview.style.display === 'block' ? 'none' : 'block';
+  placeholder.textContent = (usuarioActual.nombre || 'U').charAt(0).toUpperCase();
+  actualizarVistaPerfil();
+  abrirModal('modal-perfil');
+}
+
+function handlePerfilArchivo(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  const preview = document.getElementById('perfil-avatar-preview');
+  const placeholder = document.getElementById('perfil-avatar-placeholder');
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    toast('Solo se permiten imágenes', 'error');
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = String(reader.result || '');
+    preview.src = result;
+    preview.style.display = 'block';
+    preview.dataset.avatar = result;
+    if (placeholder) placeholder.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function togglePerfilPassword() {
+  const input = document.getElementById('perfil-password');
+  const button = document.getElementById('perfil-password-toggle');
+  const visible = input.type === 'text';
+  input.type = visible ? 'password' : 'text';
+  button.textContent = visible ? 'Mostrar' : 'Ocultar';
+}
+
+async function guardarPerfil(event) {
+  event.preventDefault();
+  const nombre = document.getElementById('perfil-nombre').value.trim();
+  const email = document.getElementById('perfil-email').value.trim();
+  const password = document.getElementById('perfil-password').value;
+  const preview = document.getElementById('perfil-avatar-preview');
+  const avatar = preview && preview.dataset.avatar ? preview.dataset.avatar : (usuarioActual?.avatar || '');
+
+  if (!nombre || !email) {
+    return toast('Nombre y correo son obligatorios', 'error');
+  }
+
+  const respuesta = await apiFetch(`${API}/auth/perfil`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, email, password, avatar }),
+  });
+  const resultado = await respuesta.json();
+
+  if (!respuesta.ok || !resultado.ok) {
+    return toast(resultado.error || 'No se pudo actualizar el perfil', 'error');
+  }
+
+  usuarioActual = resultado.usuario;
+  actualizarVistaPerfil();
+  cerrarModal('modal-perfil');
+  toast('Perfil actualizado');
 }
 
 async function cargarUsuarios() {

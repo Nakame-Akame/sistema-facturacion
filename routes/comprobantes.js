@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const METODOS_COBRO = new Set(['efectivo', 'transferencia', 'tarjeta', 'otro']);
+const METODOS_COBRO = new Set(['efectivo', 'transferencia', 'tarjeta', 'otro', 'yape', 'bcp']);
 const { tienePermiso, requierePermiso } = require('../middleware/permisos');
 const {
   ErrorValidacion,
@@ -14,7 +14,7 @@ const {
 // GET /api/comprobantes?tipo=factura
 router.get('/', requierePermiso('comprobantes:ver'), (req, res) => {
   try {
-    const { tipo } = req.query;
+    const { tipo, fecha_desde, fecha_hasta } = req.query;
     let query = `
       SELECT c.*, cl.nombre as cliente_nombre, cl.documento as cliente_documento,
              s.serie as serie_actual,
@@ -30,8 +30,23 @@ router.get('/', requierePermiso('comprobantes:ver'), (req, res) => {
         FROM pagos_comprobante GROUP BY comprobante_id
       ) pagos ON pagos.comprobante_id = c.id
     `;
+    const filtros = [];
     const params = [];
-    if (tipo) { query += ' WHERE c.tipo = ?'; params.push(tipo); }
+
+    if (tipo) {
+      filtros.push('c.tipo = ?');
+      params.push(tipo);
+    }
+    if (fecha_desde) {
+      filtros.push('DATE(c.fecha) >= DATE(?)');
+      params.push(fecha_desde);
+    }
+    if (fecha_hasta) {
+      filtros.push('DATE(c.fecha) <= DATE(?)');
+      params.push(fecha_hasta);
+    }
+    if (filtros.length) query += ` WHERE ${filtros.join(' AND ')}`;
+
     query += ' ORDER BY c.fecha DESC';
     const data = db.prepare(query).all(...params);
     res.json({ ok: true, data });

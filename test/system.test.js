@@ -117,6 +117,55 @@ test('login accepts valid credentials and rejects invalid credentials', async ()
   assert.equal(invalid.response.status, 401);
 });
 
+test('the current user can edit personal information and password', async () => {
+  const { cookie } = await login();
+  const update = await fetch(`${api}/api/auth/perfil`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Cookie: cookie },
+    body: JSON.stringify({
+      nombre: 'Administrador actualizado',
+      email: 'admin.actualizado@test.local',
+      password: 'NuevoPasswordSeguro-2026!Admin',
+      avatar: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAF',
+    }),
+  });
+
+  assert.equal(update.status, 200);
+  const payload = await update.json();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.usuario.nombre, 'Administrador actualizado');
+  assert.equal(payload.usuario.email, 'admin.actualizado@test.local');
+  assert.match(payload.usuario.avatar, /^data:image\//);
+
+  const meResponse = await fetch(`${api}/api/auth/me`, { headers: { Cookie: cookie } });
+  assert.equal(meResponse.status, 200);
+  const me = await meResponse.json();
+  assert.equal(me.usuario.email, 'admin.actualizado@test.local');
+
+  const relogin = await login('admin.actualizado@test.local', 'NuevoPasswordSeguro-2026!Admin');
+  assert.equal(relogin.response.status, 200);
+});
+
+test('the comprobantes endpoint filters by date range', async () => {
+  const { cookie } = await login();
+  const headers = { Cookie: cookie };
+
+  const cliente = db.prepare('INSERT INTO clientes (nombre, documento) VALUES (?, ?)').run('Cliente Fechas', '77777777').lastInsertRowid;
+  db.prepare('INSERT OR IGNORE INTO series (tipo, serie, ultimo_numero) VALUES (?, ?, ?)').run('factura', 'F', 0);
+  db.prepare('INSERT INTO comprobantes (tipo, serie, numero, cliente_id, condicion_pago, subtotal, igv, descuento, total, afecta_igv, precios_incluyen_igv, estado, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run('factura', 'F', 1, cliente, 'contado', 100, 18, 0, 118, 1, 0, 'emitido', '2026-01-12');
+  db.prepare('INSERT INTO comprobantes (tipo, serie, numero, cliente_id, condicion_pago, subtotal, igv, descuento, total, afecta_igv, precios_incluyen_igv, estado, fecha) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run('factura', 'F', 2, cliente, 'contado', 200, 36, 0, 236, 1, 0, 'emitido', '2026-01-25');
+
+  const response = await fetch(`${api}/api/comprobantes?fecha_desde=2026-01-10&fecha_hasta=2026-01-20`, { headers });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.data.length, 1);
+  assert.equal(body.data[0].numero, 1);
+  assert.equal(body.data[0].fecha.slice(0, 10), '2026-01-12');
+});
+
 test('admin can create administrator and seller accounts with separated permissions', async () => {
   const { cookie } = await login();
   const headers = { 'Content-Type': 'application/json', Cookie: cookie };
@@ -1404,6 +1453,57 @@ test('generates a PDF for a long document with many product rows', async () => {
   const pdf = await fetch(`${api}/api/pdf/${sale.id}?formato=80mm`, { headers: { Cookie: cookie } });
   assert.equal(pdf.status, 200);
   assert.equal(Buffer.from(await pdf.arrayBuffer()).subarray(0, 5).toString(), '%PDF-');
+});
+
+test('accepts yape and bcp payment methods with optional evidence', async () => {
+  const { cookie } = await login();
+  const headers = { 'Content-Type': 'application/json', Cookie: cookie };
+
+  const productResponse = await fetch(`${api}/api/productos`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ nombre: 'Producto pago digital', precio: 80, stock: 10 }),
+  });
+  const product = await productResponse.json();
+  assert.equal(productResponse.status, 201);
+
+  const invoiceResponse = await fetch(`${api}/api/comprobantes`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      tipo: 'factura',
+      cliente_id: 1,
+      condicion_pago: 'credito',
+      fecha_vencimiento: '2026-10-20',
+      items: [{ producto_id: product.id, cantidad: 1 }],
+    }),
+  });
+  const invoice = await invoiceResponse.json();
+  assert.equal(invoiceResponse.status, 201);
+
+  const yapePayment = await fetch(`${api}/api/comprobantes/${invoice.id}/pagos`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ monto: 40, fecha_pago: '2026-10-01', metodo_pago: 'yape' }),
+  });
+  const yapeResult = await yapePayment.json();
+  assert.equal(yapePayment.status, 201);
+  assert.equal(yapeResult.data.estado, 'parcial');
+
+  const bcpPayment = await fetch(`${api}/api/comprobantes/${invoice.id}/pagos`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      monto: 40,
+      fecha_pago: '2026-10-02',
+      metodo_pago: 'bcp',
+      referencia: 'Evidencia: transferencia 123456',
+    }),
+  });
+  const bcpResult = await bcpPayment.json();
+  assert.equal(bcpPayment.status, 201);
+  assert.equal(bcpResult.data.estado, 'pagado');
+  assert.equal(bcpResult.data.saldo_pendiente, 0);
 });
 
 test('collects partial credit-invoice payments and reports net receivables', async () => {

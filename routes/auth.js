@@ -18,6 +18,8 @@ db.exec(`
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     rol TEXT DEFAULT 'vendedor',
+    permisos TEXT,
+    avatar TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
@@ -25,6 +27,9 @@ db.exec(`
 const columnasUsuarios = db.pragma('table_info(usuarios)');
 if (!columnasUsuarios.some(columna => columna.name === 'permisos')) {
   db.exec('ALTER TABLE usuarios ADD COLUMN permisos TEXT');
+}
+if (!columnasUsuarios.some(columna => columna.name === 'avatar')) {
+  db.exec('ALTER TABLE usuarios ADD COLUMN avatar TEXT');
 }
 if (!columnasUsuarios.some(columna => columna.name === 'created_at')) {
   db.exec('ALTER TABLE usuarios ADD COLUMN created_at DATETIME');
@@ -67,6 +72,7 @@ router.post('/login', (req, res) => {
         nombre: usuario.nombre,
         email: usuario.email,
         rol: usuario.rol,
+        avatar: usuario.avatar || null,
         permisos: permisosDeUsuario(usuario) ?? PERMISOS_POR_ROL[usuario.rol] ?? [],
       };
       req.session.save(saveError => {
@@ -176,6 +182,80 @@ router.delete('/usuarios/:id', requierePermiso('usuarios:administrar'), (req, re
     res.json({ ok: true, mensaje: 'Usuario eliminado' });
   } catch (err) {
     res.status(500).json({ ok: false, error: 'No se pudo eliminar el usuario' });
+  }
+});
+
+// PUT - Editar perfil del usuario autenticado
+router.put('/perfil', (req, res) => {
+  try {
+    if (!req.session.usuario)
+      return res.status(401).json({ ok: false, error: 'No autenticado' });
+
+    const nombre = typeof req.body.nombre === 'string' ? req.body.nombre.trim() : '';
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    const avatar = typeof req.body.avatar === 'string' ? req.body.avatar.trim() : '';
+
+    if (!nombre || !email)
+      return res.status(400).json({ ok: false, error: 'Nombre y correo son requeridos' });
+
+    const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailValido)
+      return res.status(400).json({ ok: false, error: 'Ingresa un correo electrónico válido' });
+
+    const usuario = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(req.session.usuario.id);
+    if (!usuario)
+      return res.status(401).json({ ok: false, error: 'No autenticado' });
+
+    const emailDuplicado = db.prepare('SELECT id FROM usuarios WHERE email = ? AND id != ?').get(email, usuario.id);
+    if (emailDuplicado)
+      return res.status(400).json({ ok: false, error: 'Ya existe otro usuario con ese correo' });
+
+    const campos = [];
+    const valores = [];
+
+    if (nombre !== usuario.nombre) {
+      campos.push('nombre = ?');
+      valores.push(nombre);
+    }
+    if (email !== usuario.email) {
+      campos.push('email = ?');
+      valores.push(email);
+    }
+
+    if (password) {
+      if (password.length < 12)
+        return res.status(400).json({ ok: false, error: 'La nueva contraseña debe tener al menos 12 caracteres' });
+      campos.push('password = ?');
+      valores.push(bcrypt.hashSync(password, 12));
+    }
+
+    if (avatar && avatar.startsWith('data:image/')) {
+      campos.push('avatar = ?');
+      valores.push(avatar);
+    }
+
+    if (campos.length > 0) {
+      db.prepare(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`).run(...valores, usuario.id);
+    }
+
+    const usuarioActualizado = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(usuario.id);
+    req.session.usuario = {
+      id: usuarioActualizado.id,
+      nombre: usuarioActualizado.nombre,
+      email: usuarioActualizado.email,
+      rol: usuarioActualizado.rol,
+      avatar: usuarioActualizado.avatar || null,
+      permisos: permisosDeUsuario(usuarioActualizado) ?? PERMISOS_POR_ROL[usuarioActualizado.rol] ?? [],
+    };
+
+    req.session.save(saveError => {
+      if (saveError)
+        return res.status(500).json({ ok: false, error: 'No se pudo guardar el perfil actualizado' });
+      res.json({ ok: true, usuario: req.session.usuario, mensaje: 'Perfil actualizado' });
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'No se pudo actualizar el perfil' });
   }
 });
 

@@ -265,9 +265,56 @@
   .login-hint { margin-top: 20px; font-size: 11px; color: #4a5268; }
   .login-loader { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
 
-  .user-pill { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); padding: 0 4px; }
+  .user-pill {
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted);
+    padding: 0 4px; background: transparent; border: none; cursor: pointer; border-radius: 999px;
+  }
+  .user-pill:hover { background: rgba(79,142,247,0.08); }
   .user-pill .avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
   .user-pill .role-badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: rgba(79,142,247,0.15); color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+
+  .profile-modal { max-width: 880px; padding: 0; overflow: hidden; background: linear-gradient(180deg, rgba(24,28,39,1) 0%, rgba(30,35,51,1) 100%); }
+  .profile-modal-layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); }
+  .profile-sidebar {
+    background: radial-gradient(circle at top left, rgba(79,142,247,0.24), transparent 36%),
+      linear-gradient(180deg, rgba(17,22,31,0.95), rgba(20,26,37,0.98));
+    border-right: 1px solid var(--border); padding: 28px 22px; display: flex; flex-direction: column; align-items: center; text-align: center;
+  }
+  .profile-avatar {
+    width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7cc6ff);
+    display: flex; align-items: center; justify-content: center; font-size: 34px; font-weight: 700; box-shadow: 0 18px 45px rgba(79,142,247,0.35); margin-bottom: 16px;
+  }
+  .profile-status {
+    display: inline-flex; align-items: center; gap: 7px; background: rgba(56,217,169,0.12); border: 1px solid rgba(56,217,169,0.28);
+    color: var(--accent2); font-size: 11px; letter-spacing: 0.8px; text-transform: uppercase; border-radius: 999px; padding: 6px 10px; font-weight: 700;
+  }
+  .profile-sidebar h3 { margin-top: 18px; font-size: 22px; line-height: 1.2; }
+  .profile-sidebar p { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .profile-meta { width: 100%; margin-top: 22px; display: grid; gap: 10px; }
+  .profile-meta-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 14px; text-align: left;
+  }
+  .profile-meta-card span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 4px; }
+  .profile-meta-card strong { font-size: 14px; }
+
+  .profile-content { padding: 28px 26px 22px; }
+  .profile-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .profile-header h2 { font-size: 24px; }
+  .profile-header small { color: var(--muted); }
+  .profile-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .profile-form-group { display: flex; flex-direction: column; gap: 8px; }
+  .profile-form-group.full { grid-column: 1 / -1; }
+  .profile-form-group label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.7px; }
+  .profile-form-group input { width: 100%; }
+  .profile-password-wrap { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+  .profile-toggle-password { border: 1px solid var(--border); background: var(--bg); color: var(--muted); border-radius: 7px; min-width: 94px; }
+  .profile-help { margin-top: 18px; padding: 12px 14px; border-radius: 10px; background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.18); color: var(--muted); font-size: 12px; }
+  .profile-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+  @media (max-width: 720px) {
+    .profile-modal-layout { grid-template-columns: 1fr; }
+    .profile-sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+    .profile-form-grid { grid-template-columns: 1fr; }
+  }
 
   /* TABS de tipo de comprobante */
   .tabs-bar { display: flex; gap: 4px; padding: 14px 20px 0; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
@@ -359,11 +406,11 @@
     <div class="topbar-right">
       <span id="fecha-top" class="topbar-date"></span>
       <button class="btn btn-primary btn-new" onclick="goTo('ventas')"><span class="btn-plus">+</span><span class="btn-label">Nueva venta</span></button>
-      <div class="user-pill" id="user-pill" style="display:none;">
+      <button class="user-pill" id="user-pill" type="button" style="display:none;" onclick="abrirModalPerfil()" aria-label="Editar perfil">
         <div class="avatar" id="user-avatar">A</div>
         <span id="user-nombre"></span>
         <span class="role-badge" id="user-rol"></span>
-      </div>
+      </button>
       <button class="btn btn-ghost btn-sm btn-logout" onclick="cerrarSesion()"><span aria-hidden="true">↪</span><span class="btn-label">Salir</span></button>
     </div>
   </header>

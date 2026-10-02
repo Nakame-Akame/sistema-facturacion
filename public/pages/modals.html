@@ -8,8 +8,15 @@
     <div class="form-grid">
       <div class="form-group"><label for="cobro-monto">Monto (S/) *</label><input id="cobro-monto" type="number" min="0.01" step="0.01" required></div>
       <div class="form-group"><label for="cobro-fecha">Fecha de cobro *</label><input id="cobro-fecha" type="date" required></div>
-      <div class="form-group"><label for="cobro-metodo">Método *</label><select id="cobro-metodo"><option value="transferencia">Transferencia</option><option value="efectivo">Efectivo</option><option value="tarjeta">Tarjeta</option><option value="otro">Otro</option></select></div>
-      <div class="form-group"><label for="cobro-referencia">Referencia</label><input id="cobro-referencia" maxlength="100"></div>
+      <div class="form-group"><label for="cobro-metodo">Medio de pago *</label><select id="cobro-metodo">
+        <option value="efectivo">Efectivo</option>
+        <option value="tarjeta">Tarjeta</option>
+        <option value="transferencia">Transferencia</option>
+        <option value="yape">Yape</option>
+        <option value="bcp">BCP</option>
+        <option value="otro">Otro</option>
+      </select></div>
+      <div class="form-group"><label for="cobro-referencia">Evidencia (opcional)</label><input id="cobro-referencia" maxlength="100" placeholder="Número de operación, voucher, etc."></div>
     </div>
     <div class="modal-footer"><button class="btn" type="button" onclick="cerrarModal('modal-cobro-factura')">Cancelar</button><button class="btn btn-primary" type="submit">Guardar cobro</button></div>
   </form>
@@ -196,6 +203,130 @@
       <button class="btn btn-primary" onclick="procesarVentaConfirmada(true)">Guardar e Imprimir</button>
     </div>
   </div>
+</div>
+
+<div class="modal-overlay" id="modal-confirmar-estado">
+  <div class="modal modal-confirmar">
+    <div class="modal-confirmar-header">
+      <h2 id="confirmar-estado-titulo">Confirmar acción</h2>
+      <button class="modal-close" type="button" onclick="cerrarModal('modal-confirmar-estado')" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div id="confirmar-pago-form" style="display:none;">
+      <div class="modal-confirmar-body">
+        <div class="payment-method-shell">
+          <aside class="payment-method-sidebar">
+            <div class="payment-method-header">Método de pago</div>
+            <div class="payment-method-list" id="payment-method-list">
+              <button type="button" class="payment-method-option active" data-method="efectivo">EFECTIVO</button>
+              <button type="button" class="payment-method-option" data-method="yape">YAPE</button>
+              <button type="button" class="payment-method-option" data-method="bcp">BCP</button>
+              <button type="button" class="payment-method-option" data-method="tarjeta">TARJETA</button>
+            </div>
+            <input id="confirmar-metodo" type="hidden" value="efectivo">
+            <input id="confirmar-monto" type="hidden" value="0">
+            <input id="confirmar-fecha" type="hidden" value="">
+            <input id="confirmar-nro-operacion" type="hidden" value="">
+            <input id="confirmar-evidencia" type="file" accept="image/*" style="display:none;">
+          </aside>
+
+          <div class="payment-method-content">
+            <div class="payment-total-amount mono" id="confirmar-total">S/ 0.00</div>
+            <div class="payment-selection-box" id="confirmar-selection-box">Selecciona el método de pago</div>
+            <div class="payment-evidence-box">
+              <label class="payment-evidence-label" for="confirmar-evidencia">Evidencia (opcional)</label>
+              <label class="payment-evidence-upload" for="confirmar-evidencia">
+                <span class="payment-evidence-icon">🖼️</span>
+                <span>Adjuntar imagen</span>
+              </label>
+            </div>
+            <div class="payment-remaining-row">
+              <span>Restante</span>
+              <strong class="mono" id="confirmar-pendiente">S/ 0.00</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-bottom-actions confirmar-actions">
+      <button class="btn btn-ghost" type="button" onclick="cerrarModal('modal-confirmar-estado')">Cancelar</button>
+      <button class="btn btn-primary" type="button" onclick="confirmarCambioEstado()">Pagar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL PERFIL ===== -->
+<div class="modal-overlay" id="modal-perfil">
+  <form class="modal profile-modal" onsubmit="guardarPerfil(event)">
+    <button class="modal-close" type="button" onclick="cerrarModal('modal-perfil')" aria-label="Cerrar">✕</button>
+    <div class="profile-modal-layout">
+      <aside class="profile-sidebar">
+        <div class="profile-avatar" id="perfil-avatar">A</div>
+        <div class="profile-status">Sesión activa</div>
+        <h3 id="perfil-card-name">Usuario</h3>
+        <p id="perfil-card-email">correo@ejemplo.com</p>
+        <div class="profile-meta">
+          <div class="profile-meta-card">
+            <span>Rol</span>
+            <strong id="perfil-card-role">Vendedor</strong>
+          </div>
+          <div class="profile-meta-card">
+            <span>Estado</span>
+            <strong>Cuenta verificada</strong>
+          </div>
+        </div>
+      </aside>
+
+      <section class="profile-content">
+        <div class="profile-header">
+          <div>
+            <small>Configuración</small>
+            <h2>Mi perfil</h2>
+          </div>
+        </div>
+
+        <div class="profile-form-grid">
+          <div class="profile-form-group full">
+            <div style="display:flex; align-items:center; gap:14px; margin-bottom:6px;">
+              <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, var(--accent), #7cc6ff); overflow:hidden; border:2px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; position:relative;">
+                <img id="perfil-avatar-preview" alt="Foto de perfil" style="width:100%; height:100%; object-fit:cover; display:none;">
+                <span id="perfil-avatar-placeholder" style="font-size:26px; font-weight:700; color:#fff;">A</span>
+              </div>
+              <div>
+                <label for="perfil-avatar-input" class="btn btn-ghost btn-sm" style="cursor:pointer;">Cambiar foto</label>
+                <input id="perfil-avatar-input" type="file" accept="image/*" style="display:none;" onchange="handlePerfilArchivo(event)">
+              </div>
+            </div>
+          </div>
+          <div class="profile-form-group full">
+            <label for="perfil-nombre">Nombre completo</label>
+            <input id="perfil-nombre" type="text" maxlength="100" required>
+          </div>
+          <div class="profile-form-group full">
+            <label for="perfil-email">Correo electrónico</label>
+            <input id="perfil-email" type="email" maxlength="254" required>
+          </div>
+          <div class="profile-form-group full">
+            <label for="perfil-password">Nueva contraseña</label>
+            <div class="profile-password-wrap">
+              <input id="perfil-password" type="password" minlength="12" placeholder="Deja vacío para mantener la actual">
+              <button class="btn btn-ghost profile-toggle-password" type="button" id="perfil-password-toggle" onclick="togglePerfilPassword()">Mostrar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-help">
+          Puedes actualizar tus datos personales y, si lo deseas, cambiar la contraseña para reforzar la seguridad de tu usuario.
+        </div>
+
+        <div class="profile-actions">
+          <button class="btn btn-ghost" type="button" onclick="cerrarModal('modal-perfil')">Cancelar</button>
+          <button class="btn btn-primary" type="submit">Guardar cambios</button>
+        </div>
+      </section>
+    </div>
+  </form>
 </div>
 
 <div id="toast"></div>

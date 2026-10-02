@@ -42,7 +42,7 @@ function cerrarModal(id) { document.getElementById(id).classList.remove('open');
 function abrirModal(id) { document.getElementById(id).classList.add('open'); }
 
 // ===== FECHA =====
-document.getElementById('fecha-top').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+document.getElementById('fecha-top').textContent = new Date().toLocaleDateString('es-PE', { weekday:'long', year:'numeric', month:'long', day:'numeric', timeZone: 'America/Lima' });
 
 // ===== DASHBOARD =====
 async function cargarDashboard() {
@@ -342,7 +342,7 @@ function renderFacturas(lista) {
     const estadoBadge = { emitido: 'badge-blue', pagado: 'badge-green', anulado: 'badge-red', borrador: 'badge-yellow', enviado: 'badge-blue', aprobado: 'badge-green', rechazado: 'badge-red', pendiente: 'badge-yellow', atendido: 'badge-green' };
     const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#7a86a0' };
     const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
-    const fecha = new Date(f.fecha).toLocaleDateString('es-PE');
+    const fecha = new Date(f.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' });
     const credVencido = f.condicion_pago === 'credito' && f.fecha_vencimiento && new Date(f.fecha_vencimiento) < new Date() && f.estado !== 'pagado';
     return `<tr>
       <td>
@@ -355,7 +355,7 @@ function renderFacturas(lista) {
         <span class="badge ${f.condicion_pago === 'credito' ? (credVencido ? 'badge-red' : 'badge-yellow') : f.condicion_pago === 'contado' ? 'badge-green' : 'badge-blue'}">
           ${condicionLabel[f.condicion_pago] || f.condicion_pago}
         </span>
-        ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<br><small style="color:${credVencido?'var(--danger)':'var(--muted)'}">${credVencido?'⚠️ Venció: ':'Vence: '}${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE')}</small>` : ''}
+        ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<br><small style="color:${credVencido?'var(--danger)':'var(--muted)'}">${credVencido?'⚠️ Venció: ':'Vence: '}${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</small>` : ''}
       </td>
       <td class="mono">S/ ${f.subtotal.toFixed(2)}</td>
       <td class="mono">S/ ${f.igv.toFixed(2)}</td>
@@ -560,7 +560,7 @@ async function verFactura(id) {
   const f = d.data;
   const cfg = TIPOS_COMPROBANTE[f.tipo] || { label: f.tipo, color: '#4f8ef7' };
   const num = `${f.serie}-${String(f.numero).padStart(6,'0')}`;
-  const fecha = new Date(f.fecha).toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric' });
+  const fecha = new Date(f.fecha).toLocaleDateString('es-PE', { year:'numeric', month:'long', day:'numeric', timeZone: 'America/Lima' });
 
   const estadoColores = {
     emitido:   { bg:'#e8f0ff', fg:'#2563eb' },
@@ -582,7 +582,7 @@ async function verFactura(id) {
     <div class="fp-section">
       <div class="fp-label">Condición de pago</div>
       <div style="font-weight:600;">${condicionLabel[f.condicion_pago] || f.condicion_pago}</div>
-      ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<div style="color:#555;">Vence: ${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE')}</div>` : ''}
+      ${f.condicion_pago === 'credito' && f.fecha_vencimiento ? `<div style="color:#555;">Vence: ${new Date(f.fecha_vencimiento).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}</div>` : ''}
     </div>`;
 
   // Bloque: referencia (notas de crédito / devolución)
@@ -608,7 +608,7 @@ async function verFactura(id) {
           ${f.direccion_partida ? `<strong>Partida:</strong> ${f.direccion_partida}<br>` : ''}
           ${f.direccion_llegada ? `<strong>Llegada:</strong> ${f.direccion_llegada}<br>` : ''}
           ${f.transportista ? `<strong>Transportista:</strong> ${f.transportista}<br>` : ''}
-          ${f.fecha_traslado ? `<strong>Fecha de traslado:</strong> ${new Date(f.fecha_traslado).toLocaleDateString('es-PE')}` : ''}
+          ${f.fecha_traslado ? `<strong>Fecha de traslado:</strong> ${new Date(f.fecha_traslado).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })}` : ''}
         </div>
       </div>`;
   }

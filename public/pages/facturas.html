@@ -6,6 +6,21 @@
       <div class="table-header">
         <h2 id="comprobantes-titulo">Todos los comprobantes</h2>
         <div class="table-tools">
+          <div class="date-range-group" aria-label="Rango de fechas">
+            <div class="date-field">
+              <span>Desde</span>
+              <div class="date-picker-input">
+                <input class="date-trigger" id="fecha-desde" type="date" aria-label="Fecha inicial" oninput="filtrarFacturas()">
+              </div>
+            </div>
+            <div class="date-field">
+              <span>Hasta</span>
+              <div class="date-picker-input">
+                <input class="date-trigger" id="fecha-hasta" type="date" aria-label="Fecha final" oninput="filtrarFacturas()">
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="resetearFechas()">Limpiar</button>
+          </div>
           <div class="search-bar"><input type="text" id="buscar-factura" placeholder="Cliente, DNI o RUC..." oninput="filtrarFacturas()"></div>
           <div class="dropdown">
             <button class="btn btn-primary" onclick="toggleDropdownNuevo()">+ Otros documentos ▾</button>
